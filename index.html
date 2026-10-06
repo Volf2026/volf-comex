@@ -297,6 +297,10 @@ details.log[open] > summary::after { content: "Ocultar"; }
 .skus td .cod { display: block; }
 .skus td .desc { display: block; color: var(--muted); font-size: 12.5px; margin-top: 1px; }
 .skus .um { color: var(--muted); font-size: 12px; margin-left: 3px; }
+.skus td .ref { display: flex; flex-wrap: wrap; gap: 1px 12px; margin-top: 3px; font-size: 11.5px; color: var(--faint); overflow-wrap: anywhere; }
+.tag-sin { display: inline-block; font-size: 11.5px; color: var(--vino); border: 1px solid var(--vino); border-radius: 999px; padding: 0 7px; line-height: 1.5; }
+.cod-prov { color: var(--muted); }
+.pl-note.pedido { color: var(--ink-2); background: var(--paper-2); border-radius: 10px; padding: 10px 12px; }
 .check { margin: 14px 0 0; font-size: 13.5px; padding: 10px 12px; border-radius: 10px; }
 .check.ok { background: #EEF5F0; color: var(--ok); }
 .check.warn { background: var(--alert-soft); color: var(--alert); }
@@ -935,7 +939,7 @@ function aplicarDatos(d) {
   S.pls = new Map(Object.entries(d.pls || {}));
 }
 const opPorId = (id) => S.ops.find((o) => o.id === id) || null;
-const lineaTxt = (l) => norm(`${l.cod} ${l.desc}`);
+const lineaTxt = (l) => norm([l.cod, l.desc, l.odoo, l.pcod, l.pdesc].filter(Boolean).join(" "));
 const coincide = (txt, toks) => toks.every((t) => txt.includes(t));
 
 function filtrar({ sinEtapa = false, sinRubro = false, sinDestino = false } = {}) {
@@ -1137,7 +1141,7 @@ function itemOp(o) {
   const c = cuando(o);
   const tags = [`<span class="emo" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span>${esc(o.rubro)}`, esc(pais(o.origen))].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
   return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
-    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">📋 ${fmt(n)} SKU</span>` : o.etapa === "agua" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
+    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">${pl.fuente === "planilla" ? `🗒️ ${fmt(n)} SKU pedido` : `📋 ${fmt(n)} SKU`}</span>` : o.etapa === "agua" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
     `<span class="op-b"><span class="op-prov">${esc(o.prov)}</span><span class="op-when ${c.cls || ""}"><b>${esc(c.big)}</b>${c.small ? `<small>${esc(c.small)}</small>` : ""}</span></span>` +
     mini(o) + `</button></li>`;
 }
@@ -1291,7 +1295,13 @@ function htmlLogistica(o) {
 }
 function filasPL(lineas, toks) {
   if (!lineas.length) return `<tr><td colspan="3" class="desc">Ningún SKU coincide con el filtro.</td></tr>`;
-  return lineas.map((l) => `<tr><td><span class="cod">${hl(l.cod, toks)}</span>${l.desc ? `<span class="desc">${hl(l.desc, toks)}</span>` : ""}</td><td class="num">${fmt(l.cant)}<span class="um">${UM_TXT[l.um] || "u"}</span></td><td class="num">${l.cajas != null ? fmt(l.cajas) : ""}</td></tr>`).join("");
+  return lineas.map((l) => {
+    const refs = [];
+    if (l.odoo) refs.push(`<span>Odoo ${hl(l.odoo, toks)}</span>`);
+    if (l.pcod && l.pcod !== l.cod) refs.push(`<span>Proveedor ${hl(l.pcod, toks)}${l.pdesc && l.pdesc !== l.desc ? ` · ${hl(l.pdesc, toks)}` : ""}</span>`);
+    const cod = l.sin && (!l.cod || l.cod === l.pcod) ? `<span class="tag-sin">Sin código en sistema</span>${l.cod ? ` <span class="cod-prov">${hl(l.cod, toks)}</span>` : ""}` : hl(l.cod, toks);
+    return `<tr><td><span class="cod">${cod}</span>${l.desc ? `<span class="desc">${hl(l.desc, toks)}</span>` : ""}${refs.length ? `<span class="ref">${refs.join("")}</span>` : ""}</td><td class="num">${fmt(l.cant)}<span class="um">${UM_TXT[l.um] || "u"}</span></td><td class="num">${l.cajas != null ? fmt(l.cajas) : ""}</td></tr>`;
+  }).join("");
 }
 function lineasFiltradas(lineas) {
   const toks = tokens(S.plQ);
@@ -1308,14 +1318,15 @@ function htmlPL(o) {
   }
   const chk = control(pl.lineas, pl.declarado);
   const { toks, filas } = lineasFiltradas(pl.lineas);
+  const pedido = pl.fuente === "planilla";
   return `<section class="sec" id="pl-sec">
-    <div class="sec-h"><h3>Packing list</h3><p>${esc(txtTotales(pl.lineas))}</p>
+    <div class="sec-h"><h3>${pedido ? "Pedido" : "Packing list"}</h3><p>${esc(txtTotales(pl.lineas))}</p>
       ${esAdmin() ? `<div class="acts"><button class="btn small" data-act="pl-editar">Editar</button><button class="btn small" data-act="pl-cargar">Reemplazar</button></div>` : ""}</div>
     ${chk ? `<p class="check ${chk.ok ? "ok" : "warn"}">${chk.ok ? "✅" : "⚠️"} ${esc(chk.texto)}</p>` : ""}
     ${pl.lineas.length > 6 ? `<div class="pl-tools"><label class="search">${icon("i-search")}<span class="vh">Filtrar SKU</span><input id="pl-q" type="search" placeholder="Filtrar por código o descripción" value="${esc(S.plQ)}" autocomplete="off"></label></div>` : ""}
     <div class="tbl-wrap"><table class="skus"><thead><tr><th scope="col">SKU</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Cajas</th></tr></thead><tbody id="pl-body">${filasPL(filas, toks)}</tbody></table></div>
-    ${pl.nota ? `<p class="pl-note">${esc(pl.nota)}</p>` : ""}
-    <p class="pl-note">Cargado ${esc(fechaHora(pl.cargado))}${pl.archivo ? ` desde ${esc(pl.archivo)}` : ""}${pl.factura ? `, factura ${esc(pl.factura)}` : ""}.</p>
+    ${pl.nota ? `<p class="pl-note${pedido ? " pedido" : ""}">${pedido ? "🗒️ " : ""}${esc(pl.nota)}</p>` : ""}
+    ${pedido ? "" : `<p class="pl-note">Cargado ${esc(fechaHora(pl.cargado))}${pl.archivo ? ` desde ${esc(pl.archivo)}` : ""}${pl.factura ? `, factura ${esc(pl.factura)}` : ""}.</p>`}
   </section>`;
 }
 function renderPL() {
@@ -1621,14 +1632,14 @@ async function guardarPL() {
   if (!p || p.fase === "guardando") return;
   const o = opPorId(p.opId);
   const lineas = agrupar(p.lineas.filter((l) => String(l.cod || "").trim() || String(l.desc || "").trim()).map((l) => ({
-    cod: String(l.cod || "").trim(), desc: String(l.desc || "").trim(), cant: num(l.cant) ?? 0,
+    ...l, cod: String(l.cod || "").trim(), desc: String(l.desc || "").trim(), cant: num(l.cant) ?? 0,
     um: ["u", "dz", "set"].includes(l.um) ? l.um : "u", cajas: num(l.cajas),
   })));
   if (!lineas.length) { p.msg = "No hay líneas para publicar."; renderPL(); return; }
   p.fase = "guardando"; p.msg = ""; renderPL();
   const dec = p.declarado || {};
   const doc = {
-    op: o ? o.op : p.opId, factura: String(p.factura || "").trim(), archivo: p.archivo || "",
+    op: o ? o.op : p.opId, fuente: "pl", factura: String(p.factura || "").trim(), archivo: p.archivo || "",
     cargado: new Date().toISOString(), lineas,
     declarado: { cant: num(dec.cant), cajas: num(dec.cajas), kg: num(dec.kg) }, nota: p.nota || "",
   };
