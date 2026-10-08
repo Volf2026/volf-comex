@@ -903,6 +903,14 @@ function fechaHora(iso) {
   if (diff === 1) return `ayer a las ${hh}`;
   return `el ${d.getDate()} de ${MES_L[d.getMonth()].toLowerCase()} a las ${hh}`;
 }
+function fPlanilla(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const hh = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const d0 = new Date(d); d0.setHours(0, 0, 0, 0);
+  const diff = Math.round((hoy() - d0) / 864e5);
+  return diff === 0 ? `de hoy ${hh}` : diff === 1 ? `de ayer ${hh}` : `del ${d.getDate()}/${d.getMonth() + 1}`;
+}
 function num(v) {
   if (typeof v === "number") return isFinite(v) ? v : null;
   if (v == null) return null;
@@ -1129,8 +1137,11 @@ function renderStamp() {
   $("#btn-act").hidden = !(S.estado === "ok" && esAdmin());
   if (S.estado === "clave") { el.textContent = "Ingresá la clave de acceso"; return; }
   if (S.estado !== "ok" || !S.datos) { el.textContent = S.estado === "error" ? "Sin datos" : "Cargando…"; return; }
-  el.textContent = `Actualizado ${fechaHora(S.datos.actualizado)}`;
-  el.title = S.datos.fuente ? `${el.textContent} desde ${S.datos.fuente}` : el.textContent;
+  // "revisado": última vez que la app de COMEX controló la planilla (con la PC prendida, al menos cada hora)
+  const rev = S.datos.revisado || S.datos.actualizado, lib = S.datos.libro_guardado;
+  el.textContent = `Actualizado ${fechaHora(rev)}${lib ? ` · planilla ${fPlanilla(lib)}` : ""}`;
+  el.title = [`Revisado ${fechaHora(rev)}`, S.datos.actualizado ? `último cambio en las operaciones ${fechaHora(S.datos.actualizado)}` : "",
+    lib ? `planilla de COMEX guardada ${fechaHora(lib)}` : ""].filter(Boolean).join(" · ");
 }
 
 function renderHero() {
@@ -2031,6 +2042,10 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && S.estado === "ok" && Date.now() - S.ultimaCarga > 120000 && !editando()) cargar();
   });
+  // abierta en pantalla todo el día: trae los datos nuevos cada 5 minutos
+  setInterval(() => {
+    if (document.visibilityState === "visible" && S.estado === "ok" && Date.now() - S.ultimaCarga > 300000 && !editando()) cargar();
+  }, 60000);
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.instalar = e; $("#btn-inst").hidden = false; });
   if ("serviceWorker" in navigator && /^(https:|http:\/\/localhost)/.test(location.href)) navigator.serviceWorker.register("sw.js").catch(() => {});
   renderTodo();
