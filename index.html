@@ -1141,7 +1141,7 @@ function itemOp(o) {
   const c = cuando(o);
   const tags = [`<span class="emo" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span>${esc(o.rubro)}`, esc(pais(o.origen))].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
   return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
-    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">${pl.fuente === "planilla" ? `🗒️ ${fmt(n)} SKU pedido` : `📋 ${fmt(n)} SKU`}</span>` : o.etapa === "agua" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
+    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">${pl.fuente === "planilla" || pl.fuente === "orden" ? `🗒️ ${fmt(n)} SKU pedido` : `📋 ${fmt(n)} SKU`}</span>` : o.etapa === "agua" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
     `<span class="op-b"><span class="op-prov">${esc(o.prov)}</span><span class="op-when ${c.cls || ""}"><b>${esc(c.big)}</b>${c.small ? `<small>${esc(c.small)}</small>` : ""}</span></span>` +
     mini(o) + `</button></li>`;
 }
@@ -1318,7 +1318,7 @@ function htmlPL(o) {
   }
   const chk = control(pl.lineas, pl.declarado);
   const { toks, filas } = lineasFiltradas(pl.lineas);
-  const pedido = pl.fuente === "planilla";
+  const pedido = pl.fuente === "planilla" || pl.fuente === "orden";
   return `<section class="sec" id="pl-sec">
     <div class="sec-h"><h3>${pedido ? "Pedido" : "Packing list"}</h3><p>${esc(txtTotales(pl.lineas))}</p>
       ${esAdmin() ? `<div class="acts"><button class="btn small" data-act="pl-editar">Editar</button><button class="btn small" data-act="pl-cargar">Reemplazar</button></div>` : ""}</div>
