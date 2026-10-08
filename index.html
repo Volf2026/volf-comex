@@ -26,6 +26,7 @@
   --gris: #8F8B86; --gris-soft: #F2F1EF;
   --fab: var(--gris); --sea: var(--vino); --volf: var(--ink); --on-stage: #FFFFFF;
   --fab-soft: var(--gris-soft); --sea-soft: var(--vino-soft); --volf-soft: #EDEBE8;
+  --port: #5C9BD5; --port-soft: #EAF2FA; --port-ink: #2C6CA6;
   --alert: var(--vino); --alert-soft: var(--vino-soft); --ok: #2E6B3F;
   --focus: var(--vino);
   --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 4c2 0 2-2.6 4-2.6S6 4 8 4s2 2.6 4 2.6S14 4 16 4' fill='none' stroke='%236E1E2F' stroke-width='1.5'/%3E%3C/svg%3E");
@@ -83,24 +84,26 @@ svg { display: block; }
 .notice p { margin: 0; color: var(--muted); }
 .notice .btn { margin-top: 14px; }
 
-/* ===== Hero: la ruta fábrica → agua → VOLF ===== */
+/* ===== Hero: la ruta fábrica → agua → puerto → VOLF ===== */
 .hero { padding: 26px 0 8px; }
 .hero-total { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .hero-total .n { font: 400 30px/1 var(--serif); }
 .hero-total .t { color: var(--muted); font-size: 15px; }
-.route { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 22px; }
-.route::before, .route::after { content: ""; position: absolute; top: 33px; height: 8px; pointer-events: none; }
-.route::before { left: calc(100% / 6 + 34px); width: calc(100% / 3 - 68px); background: linear-gradient(var(--gris), var(--gris)) center / 100% 1.5px no-repeat; opacity: .6; }
-.route::after { left: calc(50% + 34px); width: calc(100% / 3 - 68px); background: var(--wave) left center / 16px 8px repeat-x; opacity: .8; }
+.route { --ic: 74px; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; }
+.route .link { position: absolute; top: calc(var(--ic) / 2 - 4px); height: 8px; width: calc(25% - var(--ic) + 8px); pointer-events: none; }
+.route .l1 { left: calc(12.5% + var(--ic) / 2 - 4px); background: linear-gradient(var(--gris), var(--gris)) center / 100% 1.5px no-repeat; opacity: .6; }
+.route .l2 { left: calc(37.5% + var(--ic) / 2 - 4px); background: var(--wave) left center / 16px 8px repeat-x; opacity: .8; }
+.route .l3 { left: calc(62.5% + var(--ic) / 2 - 4px); background: repeating-linear-gradient(90deg, var(--port) 0 6px, transparent 6px 11px) center / 100% 1.5px no-repeat; }
 .station {
   appearance: none; background: none; border: 0; padding: 0 4px 10px; margin: 0; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: 14px; transition: opacity .2s;
 }
 .station[data-e="fabrica"] { --stage: var(--fab); --soft: var(--fab-soft); }
 .station[data-e="agua"] { --stage: var(--sea); --soft: var(--sea-soft); }
+.station[data-e="puerto"] { --stage: var(--port); --soft: var(--port-soft); }
 .station[data-e="volf"] { --stage: var(--volf); --soft: var(--volf-soft); }
 .st-icon {
-  position: relative; z-index: 1; width: 74px; height: 74px; border-radius: 50%;
+  position: relative; z-index: 1; width: var(--ic); height: var(--ic); border-radius: 50%;
   display: grid; place-items: center; background: var(--card); color: var(--stage);
   border: 1.5px solid var(--stage); transition: background .2s, color .2s;
 }
@@ -108,10 +111,12 @@ svg { display: block; }
 .emo { font-family: var(--emoji); font-style: normal; line-height: 1; display: block; }
 .st-icon .emo { font-size: 36px; }
 .station[data-e="volf"] .st-icon svg { width: 46px; height: 30px; }
+.station[data-e="puerto"] .st-icon svg { width: 42px; height: 27px; }
 .st-count { margin-top: 10px; font: 400 clamp(44px, 11vw, 66px)/0.95 var(--serif); font-variant-numeric: lining-nums; }
 .st-name { margin-top: 6px; font-size: 15px; }
 .st-next { margin-top: 4px; font-size: 12.5px; color: var(--muted); min-height: 2.9em; }
 .st-next .nw { display: block; color: var(--ink-2); }
+.st-next .corto { display: none; }
 .nw { white-space: nowrap; }
 .station:hover .st-icon { background: var(--soft); }
 .station[aria-pressed="true"] .st-icon { background: var(--soft); box-shadow: 0 0 0 3px var(--stage); }
@@ -121,6 +126,7 @@ svg { display: block; }
 .share i { display: block; min-width: 0; border-radius: 5px; flex: 0 0 0; transition: flex-grow .7s cubic-bezier(.2, .7, .2, 1); }
 .share .s-fabrica { background: var(--fab); }
 .share .s-agua { background: var(--sea); }
+.share .s-puerto { background: var(--port); }
 .share .s-volf { background: var(--volf); }
 
 /* ===== Herramientas ===== */
@@ -184,18 +190,22 @@ svg { display: block; }
 .mini { display: flex; align-items: center; margin-top: 12px; }
 .nd { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--rule); background: #fff; }
 .nd .emo { font-size: 15px; }
+.nd-puerto svg { width: 18px; height: 12px; }
 .nd-volf { width: 44px; border-radius: 7px; color: var(--faint); }
 .nd-volf svg { width: 32px; height: 20px; }
 .sg { flex: 1; height: 2px; margin: 0 4px; position: relative; background: repeating-linear-gradient(90deg, var(--rule) 0 4px, transparent 4px 8px); }
 .sg b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--vino); }
-.mini[data-e="fabrica"] .nd-agua .emo, .mini[data-e="fabrica"] .nd-fab ~ .nd-agua .emo { filter: grayscale(1); opacity: .35; }
+.sg b::after { content: ""; position: absolute; right: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--vino); }
+.sg3 b, .sg3 b::after { background: var(--port); }
+.mini[data-e="fabrica"] .nd-agua .emo { filter: grayscale(1); opacity: .35; }
+.mini[data-e="fabrica"] .nd-puerto svg, .mini[data-e="agua"] .nd-puerto svg { filter: grayscale(1); opacity: .45; }
+.mini[data-e="agua"] .sg1, .mini[data-e="puerto"] .sg1, .mini[data-e="puerto"] .sg2,
+.mini[data-e="volf"] .sg1, .mini[data-e="volf"] .sg2, .mini[data-e="volf"] .sg3 { background: var(--ink-2); }
 .mini[data-e="fabrica"] .nd-fab { border-color: var(--ink-2); box-shadow: 0 0 0 2px var(--gris-soft); background: var(--gris-soft); }
-.mini[data-e="agua"] .nd-fab, .mini[data-e="volf"] .nd-fab, .mini[data-e="volf"] .nd-agua { border-color: var(--rule); }
-.mini[data-e="agua"] .sg1, .mini[data-e="volf"] .sg1, .mini[data-e="volf"] .sg2 { background: var(--ink-2); }
 .mini[data-e="agua"] .nd-agua { border-color: var(--vino); background: var(--vino-soft); box-shadow: 0 0 0 2px var(--vino-soft); }
-.mini[data-e="agua"] .sg2 b::after { content: ""; position: absolute; right: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--vino); }
+.mini[data-e="puerto"] .nd-puerto { border-color: var(--port); background: var(--port-soft); box-shadow: 0 0 0 2px var(--port-soft); }
 .mini[data-e="volf"] .nd-volf { background: var(--ink); border-color: var(--ink); color: #fff; }
-.mini.vencida .sg2 b { background: var(--vino); }
+.grp-h h2 .h-flag { display: inline-block; width: 30px; height: 20px; margin-right: 10px; vertical-align: -1px; }
 
 /* SKU encontrados en la búsqueda */
 .hits { list-style: none; margin: 0; padding: 0; }
@@ -241,29 +251,35 @@ dialog.sheet::backdrop { background: rgba(29, 29, 27, .38); }
 /* recorrido grande */
 .jr { margin-top: 22px; padding: 22px 18px 18px; border-radius: 18px; background: #fff; border: 1px solid var(--rule); }
 .jr-line { display: flex; align-items: center; }
-.jn { flex: none; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--rule); background: #fff; }
-.jn .emo { font-size: 30px; }
-.jn-volf { width: 78px; border-radius: 12px; color: var(--faint); }
-.jn-volf svg { width: 56px; height: 36px; }
+.jn { flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--rule); background: #fff; }
+.jn .emo { font-size: 28px; }
+.jn-puerto svg { width: 34px; height: 22px; }
+.jn-volf { width: 74px; border-radius: 12px; color: var(--faint); }
+.jn-volf svg { width: 54px; height: 35px; }
 .js { flex: 1; height: 10px; margin: 0 6px; position: relative; }
-.js-1 { background: repeating-linear-gradient(90deg, var(--rule) 0 5px, transparent 5px 10px) center / 100% 2px no-repeat; }
+.js-1, .js-3 { background: repeating-linear-gradient(90deg, var(--rule) 0 5px, transparent 5px 10px) center / 100% 2px no-repeat; }
 .js-2 { background: var(--wave-soft) left center / 16px 8px repeat-x; }
-.js-fill { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; }
+.js-fill { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; transition: width .8s cubic-bezier(.2, .7, .2, 1); }
 .js-1 .js-fill { background: linear-gradient(var(--ink-2), var(--ink-2)) center / 100% 2px no-repeat; }
-.js-2 .js-fill { background: var(--wave) left center / 16px 8px repeat-x; transition: width .8s cubic-bezier(.2, .7, .2, 1); }
+.js-2 .js-fill { background: var(--wave) left center / 16px 8px repeat-x; }
+.js-3 .js-fill { background: linear-gradient(var(--port), var(--port)) center / 100% 2px no-repeat; }
 .js-hoy { position: absolute; top: 50%; translate: -50% -50%; width: 12px; height: 12px; border-radius: 50%; background: var(--vino); box-shadow: 0 0 0 4px var(--vino-soft); transition: left .8s cubic-bezier(.2, .7, .2, 1); }
 .js-hoy span { position: absolute; top: 16px; left: 50%; translate: -50% 0; font-size: 11.5px; color: var(--vino); white-space: nowrap; }
+.js-3 .js-hoy { background: var(--port); box-shadow: 0 0 0 4px var(--port-soft); }
+.js-3 .js-hoy span { color: var(--port-ink); }
 .jr[data-e="fabrica"] .jn-agua .emo { filter: grayscale(1); opacity: .35; }
+.jr[data-e="fabrica"] .jn-puerto svg, .jr[data-e="agua"] .jn-puerto svg { filter: grayscale(1); opacity: .45; }
 .jr[data-e="fabrica"] .jn-fab { border: 2px solid var(--ink-2); background: var(--gris-soft); box-shadow: 0 0 0 4px var(--gris-soft); }
 .jr[data-e="agua"] .jn-agua { border: 2px solid var(--vino); background: var(--vino-soft); box-shadow: 0 0 0 4px var(--vino-soft); }
+.jr[data-e="puerto"] .jn-puerto { border: 2px solid var(--port); background: var(--port-soft); box-shadow: 0 0 0 4px var(--port-soft); }
 .jr[data-e="volf"] .jn-volf { background: var(--ink); border-color: var(--ink); color: #fff; }
 .jr.aire .js-2 { background: repeating-linear-gradient(90deg, var(--rule) 0 5px, transparent 5px 10px) center / 100% 2px no-repeat; }
 .jr.aire .js-2 .js-fill { background: linear-gradient(var(--vino), var(--vino)) center / 100% 2px no-repeat; }
-.jr-legs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px; }
+.jr-legs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .leg b { display: block; font-size: 14.5px; }
-.leg span { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
-.leg-2 { text-align: center; }
-.leg-3 { text-align: right; }
+.leg > span { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.leg-2, .leg-3 { text-align: center; }
+.leg-4 { text-align: right; }
 .jr-status { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--rule-2); font: 400 19px/1.35 var(--serif); }
 .jr-status.alert { color: var(--vino); }
 .jr-estado { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
@@ -374,20 +390,28 @@ details.log[open] > summary::after { content: "Ocultar"; }
   .bar-in { padding: 9px 14px; gap: 10px; }
   .logo { width: 44px; height: 29px; }
   .wrap { padding: 0 14px 56px; }
-  .st-icon { width: 62px; height: 62px; }
-  .st-icon svg { width: 29px; height: 29px; }
-  .station[data-e="volf"] .st-icon svg { width: 40px; height: 26px; }
-  .route::before, .route::after { top: 27px; }
-  .route::before { left: calc(100% / 6 + 28px); width: calc(100% / 3 - 56px); }
-  .route::after { left: calc(50% + 28px); width: calc(100% / 3 - 56px); }
+  .route { --ic: 54px; }
+  .station { padding: 0 1px 10px; }
+  .st-icon svg { width: 26px; height: 26px; }
+  .st-icon .emo { font-size: 27px; }
+  .station[data-e="volf"] .st-icon svg { width: 36px; height: 23px; }
+  .station[data-e="puerto"] .st-icon svg { width: 32px; height: 21px; }
+  .st-count { font-size: clamp(34px, 10.5vw, 46px); }
+  .st-name { font-size: 13px; }
+  .st-next { font-size: 12px; }
+  .st-next .largo { display: none; }
+  .st-next .corto { display: inline; }
   .d-pad { padding: 0 16px; }
   .jr { padding: 18px 12px 14px; }
-  .jn { width: 46px; height: 46px; }
-  .jn svg { width: 22px; height: 22px; }
-  .jn-volf { width: 60px; }
-  .jn-volf svg { width: 42px; height: 27px; }
+  .jn { width: 40px; height: 40px; }
+  .jn .emo { font-size: 21px; }
+  .jn-puerto svg { width: 25px; height: 16px; }
+  .jn-volf { width: 52px; }
+  .jn-volf svg { width: 36px; height: 23px; }
+  .js { margin: 0 3px; }
+  .jr-legs { gap: 6px; }
   .leg b { font-size: 13.5px; }
-  .leg span { font-size: 12px; }
+  .leg > span { font-size: 12px; }
   .btn .lbl-long { display: none; }
 }
 @media (min-width: 521px) { .btn .lbl-short { display: none; } }
@@ -428,6 +452,7 @@ body:has(dialog[open]) { overflow: hidden; }
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="volf" viewBox="16.25 10.5 200.5 129"><g fill="currentColor"><rect x="16.25" y="13" width="3.6" height="124"/><rect x="213.15" y="13" width="3.6" height="124"/><rect x="16.25" y="13" width="200.5" height="3.5"/><rect x="16.25" y="133.5" width="200.5" height="3.5"/><rect x="34.75" y="10.5" width="163.5" height="8"/><rect x="34.75" y="131.5" width="163.5" height="8"/><g transform="scale(0.06250000) translate(0.000000,2400.000000) scale(0.100000,-0.100000)"><path d="M6120 17661 c-20 -4 -41 -11 -48 -15 -46 -28 40 -122 144 -156 156 -51 187 -82 247 -241 14 -36 38 -91 55 -125 43 -85 59 -148 81 -315 15 -113 28 -168 56 -240 61 -156 74 -206 104 -374 22 -122 40 -188 74 -276 52 -131 70 -202 92 -374 17 -131 28 -171 86 -316 27 -68 46 -140 64 -248 29 -164 42 -215 104 -391 29 -81 48 -162 65 -275 29 -184 29 -182 90 -343 35 -91 53 -160 71 -271 24 -142 34 -179 104 -368 20 -56 37 -131 51 -235 20 -149 26 -170 115 -418 12 -36 32 -126 44 -200 20 -123 40 -195 114 -395 16 -43 33 -128 46 -223 15 -114 29 -179 57 -255 20 -56 49 -138 64 -182 17 -46 36 -133 45 -205 13 -93 27 -152 57 -230 66 -173 77 -215 99 -377 21 -163 35 -215 76 -298 43 -85 62 -152 83 -299 23 -161 37 -213 84 -324 35 -80 56 -171 76 -317 19 -143 41 -228 85 -325 47 -105 57 -142 80 -310 15 -107 33 -170 100 -345 17 -44 35 -129 50 -230 27 -192 37 -230 80 -315 45 -90 62 -152 80 -305 12 -96 27 -160 57 -245 152 -437 151 -569 -7 -648 -22 -11 -67 -36 -100 -56 -33 -20 -91 -46 -130 -57 -119 -36 -152 -64 -111 -99 22 -17 1921 -19 1954 -2 57 32 16 61 -144 103 -252 66 -318 123 -318 274 1 89 24 372 34 407 6 20 15 87 20 150 5 72 16 132 30 167 13 34 24 93 29 165 5 61 15 125 21 141 7 17 16 91 21 165 5 74 13 207 18 295 5 88 15 176 21 195 5 19 15 78 21 130 5 52 21 136 34 185 13 50 26 119 30 155 3 36 13 101 20 145 8 44 22 195 30 335 9 140 22 293 30 340 7 47 16 116 20 153 4 37 16 98 26 135 11 37 26 114 34 172 8 58 21 155 29 215 8 61 20 189 26 285 13 221 30 352 80 615 48 258 57 325 70 540 11 200 18 241 71 429 59 206 67 246 89 440 14 118 33 218 56 303 71 254 83 314 104 492 14 123 32 222 56 308 71 254 83 314 104 492 14 123 32 222 56 308 68 243 82 309 94 423 22 215 51 381 95 535 44 154 57 224 95 497 11 81 36 203 56 270 53 184 64 236 89 437 30 225 39 246 142 332 119 98 159 125 231 154 37 15 91 45 121 68 29 23 99 65 155 92 78 39 105 57 120 83 22 39 11 77 -26 91 -13 4 -439 7 -948 7 -959 -1 -980 -2 -980 -41 0 -34 83 -105 158 -135 100 -41 126 -61 157 -125 37 -75 42 -147 17 -275 -12 -58 -23 -166 -26 -240 -12 -273 -26 -475 -40 -559 -8 -47 -17 -117 -21 -154 -4 -37 -15 -97 -25 -133 -11 -36 -22 -109 -25 -162 -4 -53 -15 -129 -26 -168 -11 -40 -19 -103 -19 -145 0 -100 -18 -357 -35 -504 -8 -66 -17 -154 -20 -195 -3 -41 -17 -129 -30 -195 -14 -66 -29 -163 -35 -215 -6 -52 -17 -129 -24 -170 -8 -41 -20 -167 -26 -280 -16 -309 -18 -339 -35 -415 -8 -38 -15 -104 -15 -145 0 -41 -9 -109 -20 -150 -11 -41 -24 -113 -30 -160 -6 -47 -18 -110 -26 -140 -8 -30 -19 -129 -24 -220 -5 -91 -14 -247 -20 -346 -11 -205 -42 -386 -100 -604 -23 -84 -46 -201 -55 -280 -16 -138 -51 -286 -105 -445 -19 -57 -36 -135 -45 -213 -28 -234 -45 -316 -109 -497 -27 -79 -40 -143 -61 -305 -23 -175 -33 -224 -71 -335 -49 -144 -66 -225 -89 -413 -18 -145 -19 -150 -85 -367 -59 -199 -58 -193 -71 -317 -12 -123 -50 -301 -89 -418 -34 -103 -36 -110 -55 -244 -18 -129 -42 -188 -87 -216 -42 -25 -69 -25 -102 1 -37 29 -51 60 -81 185 -15 60 -49 172 -77 249 -35 101 -55 177 -70 275 -11 74 -30 162 -43 195 -12 33 -36 97 -53 141 -17 45 -40 133 -52 195 -41 232 -53 276 -91 358 -46 100 -63 162 -79 291 -16 133 -33 192 -84 301 -39 82 -49 117 -74 264 -23 134 -39 195 -75 288 -56 141 -69 192 -96 360 -22 133 -36 178 -95 312 -28 63 -39 110 -56 225 -26 182 -32 204 -86 315 -38 78 -47 110 -70 245 -23 144 -40 202 -118 418 -14 40 -35 128 -46 195 -30 181 -38 213 -85 322 -53 124 -61 152 -80 295 -17 137 -36 202 -80 291 -37 73 -60 154 -70 244 -13 120 -27 180 -65 276 -59 147 -77 210 -105 369 -30 165 -51 255 -102 420 -22 73 -42 169 -54 265 -24 194 -43 275 -91 410 -33 93 -43 140 -64 305 -28 223 -39 272 -89 400 -35 91 -45 139 -89 466 -9 71 -26 141 -46 190 -66 169 -98 338 -80 416 17 70 123 175 241 239 90 48 142 91 163 133 20 40 11 53 -42 65 -53 11 -1046 13 -1102 2z M16820 17534 c-30 -8 -105 -19 -167 -24 -68 -6 -134 -18 -170 -31 -115 -42 -189 -59 -327 -74 -198 -22 -238 -31 -346 -80 -53 -25 -159 -60 -240 -80 -80 -20 -165 -48 -190 -62 -25 -14 -67 -39 -95 -54 -27 -16 -84 -36 -125 -45 -85 -19 -128 -38 -185 -84 -51 -41 -98 -64 -159 -79 -64 -16 -111 -40 -171 -90 -27 -23 -81 -53 -120 -69 -38 -15 -101 -51 -140 -80 -38 -30 -96 -67 -127 -83 -31 -16 -82 -49 -112 -74 -31 -25 -80 -61 -109 -79 -28 -19 -65 -48 -82 -66 -16 -18 -61 -56 -100 -85 -38 -29 -86 -70 -105 -90 -19 -21 -71 -61 -115 -90 -111 -72 -376 -347 -504 -522 -29 -40 -57 -73 -62 -73 -4 0 -34 -33 -66 -72 -31 -40 -78 -96 -104 -124 -26 -28 -56 -68 -67 -90 -11 -21 -43 -70 -72 -109 -29 -38 -67 -101 -86 -139 -19 -37 -56 -92 -83 -122 -36 -39 -58 -78 -84 -143 -19 -49 -55 -118 -80 -153 -25 -36 -60 -105 -80 -161 -20 -54 -52 -120 -70 -145 -48 -66 -54 -79 -81 -181 -16 -59 -42 -122 -75 -178 -31 -53 -56 -114 -65 -153 -8 -36 -25 -110 -37 -165 -12 -55 -45 -161 -75 -235 -46 -117 -54 -151 -64 -245 -23 -230 -42 -364 -71 -480 -25 -102 -30 -146 -35 -300 -3 -113 -13 -219 -25 -284 -24 -131 -24 -162 3 -297 17 -87 21 -142 20 -274 -1 -157 0 -168 29 -255 19 -56 34 -127 40 -190 5 -55 13 -129 18 -165 6 -36 15 -112 22 -170 14 -123 42 -232 92 -350 21 -52 48 -145 66 -235 24 -117 37 -159 62 -199 18 -28 40 -64 50 -81 10 -16 32 -82 49 -145 24 -88 42 -133 79 -190 26 -41 62 -113 80 -160 18 -47 56 -121 85 -165 30 -44 63 -100 73 -125 11 -25 44 -76 73 -115 28 -38 65 -98 82 -133 17 -34 53 -91 82 -125 28 -35 75 -97 104 -138 62 -87 132 -179 205 -268 28 -36 70 -87 92 -115 65 -83 555 -565 610 -600 27 -18 71 -51 98 -74 26 -23 69 -56 95 -73 26 -18 73 -54 104 -80 32 -26 84 -62 115 -80 32 -18 87 -55 122 -81 35 -27 86 -60 115 -75 28 -14 83 -49 121 -79 47 -36 101 -65 162 -88 51 -18 115 -50 142 -69 62 -45 111 -69 181 -92 30 -9 98 -41 150 -70 70 -39 130 -63 225 -90 72 -20 177 -58 235 -85 89 -41 123 -52 220 -66 63 -9 194 -39 290 -66 300 -85 347 -92 685 -108 110 -5 226 -14 258 -19 85 -15 593 -15 637 -1 19 6 132 15 250 20 370 15 456 29 805 131 55 16 159 38 230 49 118 18 140 25 240 75 77 38 138 61 204 75 112 25 147 39 227 91 33 21 107 54 163 73 66 22 116 46 144 68 42 35 117 78 136 78 33 0 130 48 172 86 28 24 85 62 127 83 43 22 97 55 121 75 24 20 76 55 115 78 39 22 87 55 106 73 19 18 69 57 110 87 41 31 89 70 105 88 17 18 66 56 110 85 91 60 560 525 636 630 23 33 68 89 99 125 31 36 67 81 81 100 13 19 47 61 76 92 28 31 61 74 71 95 11 21 44 70 72 108 29 39 65 97 80 130 16 33 49 87 75 120 26 33 67 101 90 150 23 50 63 120 88 157 25 36 55 97 67 135 12 37 46 111 75 163 39 69 63 130 89 225 21 77 56 171 86 231 28 56 56 131 64 170 8 38 22 107 31 153 9 46 37 137 61 203 50 134 69 238 79 439 4 74 16 178 26 232 15 76 19 144 19 296 0 182 2 204 25 281 31 104 31 114 -1 203 -25 69 -27 82 -29 292 -1 142 -8 256 -18 320 -9 55 -19 143 -22 195 -16 236 -32 317 -91 456 -31 71 -49 135 -64 220 -31 179 -47 231 -95 321 -28 51 -57 126 -76 195 -24 89 -41 129 -80 190 -34 51 -61 108 -80 170 -21 68 -43 114 -83 172 -31 43 -63 101 -72 130 -24 72 -40 103 -94 171 -25 33 -59 83 -75 110 -16 28 -50 79 -77 114 -27 35 -62 89 -78 120 -15 32 -48 82 -72 112 -25 29 -57 72 -71 94 -15 22 -57 72 -95 110 -37 39 -103 113 -147 165 -126 149 -393 416 -466 465 -36 25 -75 58 -88 75 -12 17 -54 55 -94 84 -40 30 -85 68 -102 86 -16 17 -59 49 -95 70 -36 21 -91 59 -123 84 -32 24 -86 60 -120 80 -34 19 -88 57 -120 84 -32 27 -87 61 -125 76 -37 15 -96 49 -131 75 -43 33 -93 59 -156 80 -55 20 -121 52 -165 82 -67 45 -119 66 -245 98 -22 6 -78 33 -125 61 -90 53 -107 59 -251 90 -51 11 -134 40 -190 65 -122 56 -176 70 -349 89 -77 9 -180 28 -240 46 -58 16 -157 37 -220 45 -63 8 -140 23 -170 32 -79 24 -1174 30 -1260 7z m615 -298 c197 -49 264 -62 420 -80 161 -19 241 -39 325 -81 69 -35 123 -52 259 -85 59 -14 106 -33 155 -64 67 -42 121 -63 256 -100 34 -10 78 -34 115 -62 33 -25 92 -61 131 -80 39 -18 98 -53 130 -77 32 -25 96 -63 142 -86 45 -23 107 -64 137 -91 30 -27 78 -61 107 -76 29 -14 78 -47 108 -73 30 -26 73 -61 95 -77 148 -107 769 -720 854 -844 33 -47 71 -96 86 -110 15 -14 46 -52 68 -85 23 -33 62 -82 88 -110 26 -27 65 -86 88 -130 22 -44 59 -102 82 -130 23 -27 56 -79 74 -115 18 -36 56 -96 83 -133 29 -39 66 -106 86 -159 20 -50 54 -115 76 -144 44 -59 68 -109 93 -194 9 -30 38 -90 66 -133 37 -58 55 -101 72 -170 13 -53 41 -126 66 -175 58 -110 70 -145 98 -288 15 -79 40 -161 70 -233 51 -125 81 -240 90 -351 9 -106 23 -182 50 -276 31 -107 62 -281 75 -424 5 -63 14 -142 20 -175 5 -33 10 -238 10 -455 0 -349 -3 -408 -20 -509 -11 -62 -20 -142 -20 -176 0 -46 -9 -87 -34 -157 -27 -73 -40 -137 -61 -293 -36 -276 -50 -336 -100 -445 -28 -62 -52 -139 -70 -220 -31 -143 -40 -167 -100 -270 -28 -49 -52 -110 -69 -175 -21 -79 -36 -114 -75 -170 -27 -38 -63 -103 -80 -144 -17 -41 -53 -104 -80 -140 -27 -36 -63 -97 -81 -134 -18 -38 -53 -97 -79 -130 -26 -34 -65 -89 -86 -122 -21 -33 -59 -85 -85 -115 -25 -30 -65 -82 -88 -115 -23 -33 -57 -72 -76 -87 -19 -16 -81 -85 -137 -154 -63 -77 -128 -145 -168 -176 -36 -27 -123 -103 -192 -168 -69 -65 -150 -133 -180 -150 -30 -18 -75 -52 -102 -77 -27 -26 -83 -60 -133 -84 -52 -23 -107 -58 -139 -87 -40 -36 -73 -56 -131 -76 -44 -15 -114 -51 -159 -82 -68 -46 -96 -58 -187 -80 -85 -21 -123 -36 -184 -75 -95 -60 -107 -63 -269 -88 -71 -11 -157 -29 -190 -41 -33 -11 -134 -39 -225 -61 l-165 -40 -520 4 c-518 4 -520 4 -625 29 -58 14 -141 40 -185 56 -96 37 -135 46 -285 66 -133 17 -182 33 -247 77 -57 39 -114 61 -218 84 -95 21 -150 43 -211 86 -25 17 -88 48 -140 69 -52 21 -118 56 -147 78 -28 22 -90 58 -137 80 -47 22 -109 61 -139 87 -30 25 -84 61 -121 80 -36 18 -91 53 -121 78 -30 24 -81 61 -114 82 -56 36 -108 80 -259 216 -33 30 -81 71 -106 89 -57 44 -362 349 -414 415 -22 28 -65 77 -95 111 -97 106 -164 186 -215 253 -27 37 -66 85 -87 108 -21 23 -54 72 -73 110 -19 38 -52 92 -75 120 -22 28 -59 82 -82 120 -23 37 -59 89 -81 115 -23 27 -55 87 -78 143 -23 59 -54 116 -79 145 -57 67 -76 104 -101 190 -12 41 -43 113 -70 160 -26 47 -58 119 -70 160 -12 41 -46 125 -76 185 -42 85 -63 144 -90 255 -24 97 -51 180 -84 251 -51 109 -62 157 -95 395 -8 62 -34 176 -56 255 -80 282 -94 449 -94 1119 0 671 14 837 94 1120 23 80 50 199 62 265 27 160 54 261 102 375 31 74 94 278 97 310 0 3 23 42 50 85 28 44 58 105 67 135 25 85 49 135 93 194 22 29 56 94 76 144 20 53 57 120 86 159 27 37 65 97 83 133 18 37 50 86 71 110 20 25 57 77 82 115 24 39 65 95 91 125 26 30 61 76 79 101 45 67 518 536 581 577 30 19 80 58 112 88 32 29 85 67 117 83 33 17 86 53 119 82 32 28 92 68 134 89 42 21 100 56 128 78 34 27 81 50 146 72 52 17 117 47 143 66 75 55 140 82 239 99 111 19 146 31 243 83 94 51 124 58 296 77 76 8 164 22 194 30 30 8 91 19 135 25 44 6 114 20 155 30 112 28 115 28 395 25 260 -2 260 -2 410 -39z M31317 17514 c-4 -4 -806 -7 -1784 -8 -1875 -1 -1823 0 -1823 -44 0 -10 25 -62 55 -117 63 -114 75 -160 76 -293 0 -53 5 -119 10 -147 10 -48 21 -464 37 -1395 7 -387 10 -441 27 -490 17 -49 19 -91 20 -395 1 -334 2 -342 29 -460 28 -119 28 -123 27 -445 -1 -265 1 -341 15 -410 43 -220 46 -2496 4 -2650 -9 -31 -14 -165 -15 -440 -3 -395 -3 -395 -31 -495 -28 -100 -28 -100 -30 -490 -2 -318 -6 -405 -19 -470 -18 -83 -24 -292 -43 -1470 -6 -400 -10 -475 -24 -506 -24 -55 -193 -224 -283 -284 -191 -128 -230 -160 -233 -186 -2 -14 3 -31 11 -37 20 -17 2093 -20 2125 -3 48 25 17 60 -84 95 -38 13 -116 46 -174 74 -58 28 -134 58 -170 67 -75 19 -107 34 -175 83 -27 19 -74 46 -105 60 -75 34 -107 58 -128 95 -21 39 -27 244 -41 1262 -7 570 -11 682 -25 750 -15 70 -17 149 -17 643 0 563 0 563 -26 655 -26 92 -26 92 -33 722 -5 458 -10 642 -20 675 -21 75 -17 198 7 246 43 81 73 89 258 68 77 -8 158 -20 180 -25 22 -5 104 -14 181 -19 236 -16 313 -62 374 -223 38 -102 50 -126 100 -206 22 -35 52 -103 66 -150 14 -47 48 -127 75 -177 27 -50 60 -124 74 -164 39 -113 64 -142 95 -105 17 21 17 2339 0 2360 -32 38 -64 2 -96 -105 -13 -45 -44 -121 -70 -168 -31 -55 -56 -120 -71 -181 -29 -117 -42 -144 -145 -301 -109 -164 -92 -156 -407 -195 -81 -11 -150 -26 -200 -45 -110 -42 -165 -53 -226 -47 -118 12 -159 56 -176 188 -13 104 -6 185 29 308 27 96 27 96 28 711 2 568 3 619 20 670 17 50 19 114 26 735 13 1184 23 1619 42 1714 11 59 15 126 14 225 -3 132 -1 146 25 223 20 58 31 114 36 186 12 172 69 227 232 227 49 0 96 9 162 30 71 23 113 30 173 30 43 0 129 7 189 15 61 9 193 20 295 25 102 6 264 15 360 20 99 5 199 16 230 24 125 36 211 14 301 -76 55 -55 76 -92 108 -190 13 -37 47 -104 76 -148 31 -47 65 -114 80 -160 15 -46 49 -113 80 -160 31 -46 65 -114 80 -159 14 -43 40 -100 58 -126 79 -117 96 -150 121 -241 15 -54 45 -134 66 -179 21 -45 49 -106 60 -136 12 -30 26 -60 32 -66 15 -19 45 -16 53 5 12 27 6 1681 -6 1725 -7 26 -20 44 -42 57 -31 19 -87 27 -100 14z M23399 17505 c-4 -3 -50 -6 -103 -6 -84 0 -96 -2 -96 -17 1 -21 155 -117 219 -137 25 -7 78 -23 117 -35 156 -48 182 -117 190 -525 4 -176 10 -257 26 -345 17 -93 21 -151 21 -305 -1 -186 -1 -192 29 -280 30 -88 31 -94 33 -320 2 -127 8 -250 15 -275 6 -25 15 -180 21 -345 5 -165 13 -412 18 -550 6 -197 12 -261 25 -300 15 -40 18 -92 21 -270 3 -206 5 -226 31 -320 26 -92 28 -113 26 -252 -1 -90 5 -197 14 -265 17 -127 38 -644 37 -903 -2 -381 -22 -1032 -33 -1075 -7 -27 -15 -198 -20 -435 -7 -376 -9 -393 -33 -482 -26 -91 -26 -97 -24 -400 1 -280 0 -313 -18 -363 -17 -49 -20 -100 -27 -465 -20 -1095 -25 -1258 -43 -1350 -15 -77 -17 -132 -12 -371 5 -325 5 -328 -75 -412 -29 -31 -67 -74 -85 -94 -17 -21 -69 -64 -115 -96 -195 -139 -264 -241 -183 -272 15 -6 507 -10 1277 -11 689 0 1285 -1 1323 -2 39 0 197 1 351 4 302 5 301 5 329 58 19 38 26 1835 7 1869 -33 58 -57 11 -97 -188 -15 -74 -44 -188 -66 -252 -25 -77 -45 -165 -58 -260 -21 -151 -39 -215 -88 -313 -42 -83 -49 -110 -77 -270 -47 -265 -112 -402 -218 -456 -68 -35 -122 -25 -240 45 -34 20 -92 36 -212 61 -131 26 -186 42 -263 78 -104 48 -118 53 -285 92 -172 39 -263 98 -324 207 -29 53 -29 53 -26 278 3 218 2 228 -23 320 -25 89 -28 114 -36 405 -4 171 -13 330 -19 355 -11 42 -20 277 -39 1045 -6 248 -12 351 -26 415 -12 63 -18 145 -20 315 -3 216 -5 236 -31 330 -27 97 -28 106 -25 330 1 177 -2 249 -14 315 -15 78 -40 678 -37 880 1 36 6 360 11 720 7 553 11 665 25 720 14 57 16 135 15 610 -1 545 -1 545 30 636 30 91 30 91 29 640 -1 531 0 551 21 624 20 72 21 94 21 620 0 598 2 620 57 672 45 42 220 156 303 198 119 60 191 144 143 166 -21 9 -1685 18 -1694 9z"/></g></g></symbol>
+  <symbol id="ar" viewBox="0 0 28 18"><clipPath id="ar-c"><rect width="28" height="18" rx="2.6"/></clipPath><g clip-path="url(#ar-c)"><rect width="28" height="18" fill="#FFFFFF"/><rect width="28" height="6" fill="#74ACDF"/><rect y="12" width="28" height="6" fill="#74ACDF"/><g stroke="#F6B40E" stroke-width=".6" stroke-linecap="round"><path d="M14 5.4v1M14 11.6v1M10.4 9h1M16.6 9h1M11.45 6.45l.7.7M15.85 10.85l.7.7M11.45 11.55l.7-.7M15.85 7.15l.7-.7"/></g><circle cx="14" cy="9" r="2" fill="#F6B40E" stroke="#B5730A" stroke-width=".35"/></g><rect x=".35" y=".35" width="27.3" height="17.3" rx="2.3" fill="none" stroke="#000" stroke-opacity=".14" stroke-width=".7"/></symbol>
   <symbol id="i-fab" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 21h19"/><path d="M3.5 21v-9l5 3.2V12l5 3.2V12l4.6 3V3.5h3V21"/><path d="M6.5 18.2h2M11 18.2h2M15.4 18.2h1.6"/></g></symbol>
   <symbol id="i-ship" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 14.2h19.2l-2.9 5.3H5.4z"/><path d="M4.6 14.2v-3h3.6v3M8.2 14.2v-3h3.6v3M8.2 11.2V8.4h3.6v2.8"/><path d="M15 14.2V8h3.4v6.2M16.7 8V5.6"/><path d="M2 22.3c1.2 0 1.2-.8 2.5-.8s1.2.8 2.5.8 1.2-.8 2.5-.8 1.2.8 2.5.8 1.2-.8 2.5-.8 1.2.8 2.5.8 1.2-.8 2.5-.8 1.2.8 2.5.8"/></g></symbol>
   <symbol id="i-plane" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M21.5 12c0-.8-.7-1.4-1.5-1.4h-5.2L10.2 3H8.2l2.4 7.6H6.2L4.6 8.4H3l1 3.6-1 3.6h1.6l1.6-2.2h4.4L8.2 21h2l4.6-7.6H20c.8 0 1.5-.6 1.5-1.4z"/></g></symbol>
@@ -449,11 +474,13 @@ body:has(dialog[open]) { overflow: hidden; }
   <section class="hero" id="hero" hidden>
     <p class="hero-total"><span class="n" id="h-total">0</span><span class="t" id="h-total-t">operaciones activas</span></p>
     <div class="route" id="route" role="group" aria-label="Operaciones por etapa. Tocá una etapa para filtrar la lista.">
+      <i class="link l1" aria-hidden="true"></i><i class="link l2" aria-hidden="true"></i><i class="link l3" aria-hidden="true"></i>
       <button class="station" data-e="fabrica" aria-pressed="false"><span class="st-icon"><span class="emo" aria-hidden="true">🏭</span></span><span class="st-count" id="c-fabrica">0</span><span class="st-name">En fabricación</span><span class="st-next" id="n-fabrica"></span></button>
       <button class="station" data-e="agua" aria-pressed="false"><span class="st-icon"><span class="emo" aria-hidden="true">🚢</span></span><span class="st-count" id="c-agua">0</span><span class="st-name">En agua</span><span class="st-next" id="n-agua"></span></button>
+      <button class="station" data-e="puerto" aria-pressed="false"><span class="st-icon"><svg aria-hidden="true"><use href="#ar"/></svg></span><span class="st-count" id="c-puerto">0</span><span class="st-name">En puerto</span><span class="st-next" id="n-puerto"></span></button>
       <button class="station" data-e="volf" aria-pressed="false"><span class="st-icon"><svg aria-hidden="true"><use href="#volf"/></svg></span><span class="st-count" id="c-volf">0</span><span class="st-name">En VOLF</span><span class="st-next" id="n-volf"></span></button>
     </div>
-    <div class="share" aria-hidden="true"><i class="s-fabrica"></i><i class="s-agua"></i><i class="s-volf"></i></div>
+    <div class="share" aria-hidden="true"><i class="s-fabrica"></i><i class="s-agua"></i><i class="s-puerto"></i><i class="s-volf"></i></div>
   </section>
 
   <section class="tools" id="tools" hidden>
@@ -565,12 +592,27 @@ const ComexParse = (() => {
     return isFinite(n) ? n : null;
   }
 
-  // ---- Etapa: fabrica / agua / volf ----
+  // ---- Etapa según el estado de la planilla: fabrica / agua / puerto / volf ----
   function etapaDe(estadoN, tieneBL) {
-    if (/(DEPO|FAMATINA|LLEG|INGRES|ENTREGAD|BELGRANO|EN VOLF|RECIBID|ARRIBAD)/.test(estadoN)) return "volf";
-    if (/(AGUA|NAVEG|EMBARCAD|TRANSITO|DHL|COURIER|VUELO|DESPACHO|PUERTO|ADUANA|ZONA PRIMARIA)/.test(estadoN)) return "agua";
+    if (/(FISCAL|PUERTO|ARRIBAD|ADUANA|ZONA PRIMARIA|CANAL (ROJO|VERDE|NARANJA)|VERIFICAC|OFICIALIZ|LIBERAD)/.test(estadoN) &&
+        !/(FAMATINA|BELGRANO|EN VOLF)/.test(estadoN)) return "puerto";
+    if (/(DEPO|FAMATINA|LLEG|INGRES|ENTREGAD|BELGRANO|EN VOLF|RECIBID)/.test(estadoN)) return "volf";
+    if (/(AGUA|NAVEG|EMBARCAD|TRANSITO|DHL|COURIER|VUELO|DESPACHO)/.test(estadoN)) return "agua";
     if (/(FABRIC|PRODUC|CONFIRMAR|ADVANCE|ANTICIPO|ESPERANDO|PENDIENTE|ORDEN|A EMBARCAR)/.test(estadoN)) return "fabrica";
     return tieneBL ? "agua" : "fabrica";
+  }
+
+  // ---- Regla de COMEX: embarcada la mercadería, la ETA es la llegada a puerto y 7 días después está en VOLF.
+  // Si la planilla dice que ya está en VOLF, vale eso; si sigue en fabricación, la fecha no la mueve.
+  const DIAS_A_VOLF = 7;
+  function etapaHoy(base, eta, ahora) {
+    if (base === "volf" || base === "fabrica" || !eta) return base;
+    const [y, m, d] = eta.split("-").map(Number);
+    const h = ahora || new Date();
+    const dif = Math.round((new Date(h.getFullYear(), h.getMonth(), h.getDate()) - new Date(y, m - 1, d)) / 864e5);
+    if (dif >= DIAS_A_VOLF) return "volf";
+    if (dif >= 0) return "puerto";
+    return base;
   }
 
   const PAISES = [
@@ -746,7 +788,7 @@ const ComexParse = (() => {
       const despachoTxt = text(get(r, "despacho"));
       ops.push({
         id, op, prov, origen: text(get(r, "origen")), rubro, producto, destino,
-        etapa: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
+        etapa: etapaHoy(etapaDe(estadoN, !!bl), eta), etapa_base: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
         fc: text(get(r, "fc")), inal: text(get(r, "inal")), libre: text(get(r, "libre")),
         bl, peso: numero(get(r, "peso")), puerto, etd, eta, buque, terminal,
         cntr, contenedor, agencia: text(get(r, "agencia")), ingreso,
@@ -776,7 +818,7 @@ const ComexParse = (() => {
     return { nuevas, cambios, bajas };
   }
 
-  return { parseWorkbook, diffOps, norm, fecha, etapaDe, idDe };
+  return { parseWorkbook, diffOps, norm, fecha, etapaDe, etapaHoy, DIAS_A_VOLF, idDe };
 })();
 if (typeof module !== "undefined") module.exports = ComexParse;
 
@@ -798,6 +840,7 @@ const LS = { clave: "comex.clave", token: "comex.github", api: "comex.anthropic"
 const RUBROS = ["Porcelana", "Cristalería", "Cubiertos", "Melamina", "Acero", "Varios"];
 const EMO_RUBRO = { Porcelana: "🍽️", Cristalería: "🍷", Cubiertos: "🍴", Melamina: "🥣", Acero: "🍳", Varios: "📦" };
 const EMO = { fabrica: "🏭", agua: "🚢", aire: "✈️" };
+const ETAPAS = ["fabrica", "agua", "puerto", "volf"];
 const UM_TXT = { u: "u", dz: "dz", set: "juegos" };
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const MES_L = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -833,6 +876,11 @@ const pais = (s) => PAISES[norm(s)] || tc(s);
 const opNum = (o) => { const n = parseInt(o.op, 10); return isNaN(n) ? 1e9 : n; };
 function dLocal(iso) { if (!iso) return null; const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); }
 function hoy() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function sumarDias(iso, n) {
+  const d = dLocal(iso); if (!d) return null;
+  d.setDate(d.getDate() + n);
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+}
 function dias(iso) { const d = dLocal(iso); return d ? Math.round((d - hoy()) / 864e5) : null; }
 function fCorta(iso) { const d = dLocal(iso); return d ? `${d.getDate()} ${MES[d.getMonth()]}` : ""; }
 function fLarga(iso) { const d = dLocal(iso); return d ? `${d.getDate()} de ${MES_L[d.getMonth()].toLowerCase()}` : ""; }
@@ -919,19 +967,21 @@ function toast(t) {
 
 /* ---------- datos derivados ---------- */
 function derivar(o) {
+  // La etapa se calcula con la fecha de hoy: así pasa sola a Puerto el día de la ETA y a VOLF 7 días después.
+  const base = o.etapa_base || (o.etapa === "puerto" ? "agua" : o.etapa);
+  const etapa = ComexParse.etapaHoy(base, o.eta);
   const etaD = dias(o.eta), etdD = dias(o.etd);
+  let volfF = o.eta ? sumarDias(o.eta, ComexParse.DIAS_A_VOLF) : null;
+  if (etapa === "volf" && (!volfF || dias(volfF) > 0)) volfF = o.ingreso && dias(o.ingreso) <= 0 ? o.ingreso : null; // ya en VOLF según la planilla
   let prog = null;
-  if (o.etapa === "agua") {
-    const enPuerto = /DESPACHO|PUERTO|ADUANA|ZONA PRIMARIA/.test(norm(o.estado));
-    if (enPuerto && (!o.eta || etaD <= 0)) prog = 1;
-    else if (o.etd && o.eta) {
-      const a = dLocal(o.etd), b = dLocal(o.eta);
-      if (b > a) prog = Math.min(1, Math.max(0, (hoy() - a) / (b - a)));
-    }
+  if (etapa === "agua" && o.etd && o.eta) {
+    const a = dLocal(o.etd), b = dLocal(o.eta);
+    if (b > a) prog = Math.min(1, Math.max(0, (hoy() - a) / (b - a)));
   }
-  const vencida = o.etapa !== "volf" && !!o.eta && etaD < 0;
+  const progP = etapa === "puerto" && o.eta ? Math.min(1, Math.max(0, -etaD / ComexParse.DIAS_A_VOLF)) : null;
+  const vencida = etapa === "fabrica" && !!o.eta && etaD < 0;
   const _txt = norm([o.op, o.prov, o.rubro, o.origen, pais(o.origen), o.puerto, o.bl, o.contenedor, o.fc, o.buque, o.destino, o.estado, o.producto].join(" "));
-  return { ...o, etaD, etdD, prog, vencida, _txt };
+  return { ...o, etapa, etaD, etdD, prog, progP, volfF, volfD: dias(volfF), vencida, _txt };
 }
 function aplicarDatos(d) {
   S.datos = d;
@@ -1007,14 +1057,16 @@ function agrupar(lineas) {
 /* ---------- textos de fechas y estado ---------- */
 function cuando(o) {
   if (o.etapa === "volf") {
-    const f = o.ingreso || o.eta;
-    if (!f) return { big: "Llegó", small: "" };
-    const d = dias(f);
-    return { big: fCorta(f), small: d <= 0 ? `llegó ${rel(d)}` : `ingresa ${rel(d)}` };
+    if (!o.volfF) return { big: "En VOLF", small: "" };
+    return { big: fCorta(o.volfF), small: o.volfD === 0 ? "en VOLF desde hoy" : `en VOLF desde ${rel(o.volfD)}` };
+  }
+  if (o.etapa === "puerto") {
+    if (!o.volfF) return { big: "En puerto", small: "" };
+    return { big: fCorta(o.volfF), small: `en puerto, a VOLF ${rel(o.volfD)}` };
   }
   if (o.eta) {
     if (o.vencida) return { big: fCorta(o.eta), small: `ETA vencida ${rel(o.etaD)}`, cls: "alert" };
-    return { big: fCorta(o.eta), small: `llega ${rel(o.etaD)}` };
+    return { big: fCorta(o.eta), small: `${o.modo === "aereo" ? "llega" : "llega a puerto"} ${rel(o.etaD)}` };
   }
   if (o.etd) return { big: "ETA a confirmar", small: `${o.etdD >= 0 ? "sale" : "salió"} el ${fCorta(o.etd)}`, cls: "tbc" };
   return { big: "Sin fechas", small: "", cls: "tbc" };
@@ -1028,20 +1080,21 @@ function estadoTexto(o) {
     else if (/ESPERANDO CNTR|CONTENEDOR/.test(E)) t = "Producción lista, esperando contenedor.";
     if (o.etd) t += o.etdD >= 0 ? ` Sale ${rel(o.etdD)}, el ${fLarga(o.etd)}.` : ` La salida estaba prevista para el ${fLarga(o.etd)}.`;
     else t += " Fecha de salida a confirmar.";
-    if (o.eta) t += ` Llegada prevista: ${fLarga(o.eta)}.`;
+    if (o.vencida) t += ` La ETA (${fLarga(o.eta)}) ya pasó: hay que actualizarla.`;
+    else if (o.eta) t += ` Llegada a puerto prevista: ${fLarga(o.eta)}.`;
     return t;
   }
   if (o.etapa === "agua") {
-    if (/DESPACHO|ADUANA/.test(E)) {
-      if (o.eta && o.etaD > 0) return `En despacho. Llega ${rel(o.etaD)}, el ${fLarga(o.eta)}.`;
-      return `Llegó y está en despacho de aduana.${o.ingreso ? ` Ingreso aprox. ${fLarga(o.ingreso)}.` : ""}`;
-    }
-    if (o.vencida) return `Pasó la ETA (${fLarga(o.eta)}) y todavía no figura el ingreso.`;
-    if (o.eta) return o.modo === "aereo" ? `En tránsito aéreo. Llega ${rel(o.etaD)}, el ${fLarga(o.eta)}.` : `Navegando. Llega a puerto ${rel(o.etaD)}, el ${fLarga(o.eta)}.`;
-    return "En agua. ETA a confirmar.";
+    if (!o.eta) return o.modo === "aereo" ? "En vuelo. ETA a confirmar." : "En agua. ETA a confirmar.";
+    const llega = o.modo === "aereo" ? `En vuelo. Llega a Argentina ${rel(o.etaD)}, el ${fLarga(o.eta)}` : `Navegando. Llega a puerto ${rel(o.etaD)}, el ${fLarga(o.eta)}`;
+    return `${llega}, y a VOLF el ${fLarga(o.volfF)}.`;
   }
-  const f = o.ingreso || o.eta;
-  return f ? `En VOLF. Ingresó ${dias(f) === 0 ? "hoy" : `el ${fLarga(f)}`}.` : "En VOLF.";
+  if (o.etapa === "puerto") {
+    const donde = o.modo === "aereo" ? "En el aeropuerto" : "En puerto";
+    if (!o.eta) return `${donde}.`;
+    return `${donde} desde ${o.etaD === 0 ? "hoy" : `el ${fLarga(o.eta)}`}. Llega a VOLF ${rel(o.volfD)}, el ${fLarga(o.volfF)}.`;
+  }
+  return o.volfF ? `En VOLF desde ${o.volfD === 0 ? "hoy" : `el ${fLarga(o.volfF)}`}.` : "En VOLF.";
 }
 const nw = (t) => `<span class="nw">${esc(t)}</span>`;
 function legs(o) {
@@ -1052,18 +1105,20 @@ function legs(o) {
   if (o.modo === "aereo") l2.push(o.buque && !/^AVION$/i.test(o.buque) ? esc(o.buque) : "Aéreo");
   else if (o.buque && !/^TBN$/i.test(o.buque)) l2.push(`Buque ${esc(o.buque)}`);
   else if (o.puerto) l2.push(`Desde ${esc(tc(o.puerto))}`);
-  if (o.etapa === "agua" && o.etd && o.eta && o.prog != null && o.prog < 1 && hoy() >= dLocal(o.etd)) {
+  if (o.etapa === "agua" && o.etd && o.eta && o.prog != null && hoy() >= dLocal(o.etd)) {
     const total = Math.round((dLocal(o.eta) - dLocal(o.etd)) / 864e5);
     const va = Math.max(0, Math.min(total, Math.round((hoy() - dLocal(o.etd)) / 864e5)));
     l2.push(nw(`día ${va} de ${total}`));
   }
   const l3 = [];
-  if (o.etapa === "volf") { const f = o.ingreso || o.eta; l3.push(f ? `Ingresó el ${nw(fCorta(f))}` : "Llegó"); }
-  else {
-    l3.push(o.eta ? `${o.vencida ? "ETA" : o.modo === "aereo" ? "Llega" : "Llega a puerto"} ${nw(fCorta(o.eta))}` : "ETA a confirmar");
-    if (o.ingreso) l3.push(`Ingreso aprox. ${nw(fCorta(o.ingreso))}`);
-  }
-  return [l1, l2.join("<br>") || "&nbsp;", l3.join("<br>")];
+  if (!o.eta) l3.push("ETA a confirmar");
+  else if (o.vencida) l3.push(`ETA ${nw(fCorta(o.eta))}`);
+  else l3.push(`${o.etaD > 0 ? "Llega el" : "Llegó el"} ${nw(fCorta(o.eta))}`);
+  if (o.etapa === "puerto" && o.eta) l3.push(nw(`día ${Math.min(ComexParse.DIAS_A_VOLF, 1 - o.etaD)} de ${ComexParse.DIAS_A_VOLF}`));
+  let l4;
+  if (o.etapa === "volf") l4 = o.volfF ? `Desde el ${nw(fCorta(o.volfF))}` : "Llegó";
+  else l4 = o.volfF && !o.vencida ? `Llega el ${nw(fCorta(o.volfF))}` : "A confirmar";
+  return [l1, l2.join("<br>") || "&nbsp;", l3.join("<br>"), l4];
 }
 
 /* ---------- render: barra, tablero y lista ---------- */
@@ -1078,7 +1133,7 @@ function renderStamp() {
 
 function renderHero() {
   const base = filtrar({ sinEtapa: true });
-  const c = { fabrica: 0, agua: 0, volf: 0 };
+  const c = { fabrica: 0, agua: 0, puerto: 0, volf: 0 };
   base.forEach((o) => c[o.etapa]++);
   const n = base.length;
   $("#h-total").textContent = fmt(n);
@@ -1091,21 +1146,23 @@ function renderHero() {
   $("#h-total-t").textContent = t;
   const proxSalida = base.filter((o) => o.etapa === "fabrica" && o.etd && o.etdD >= 0).sort((a, b) => a.etd.localeCompare(b.etd))[0];
   const proxLlegada = base.filter((o) => o.etapa === "agua" && o.eta && o.etaD >= 0).sort((a, b) => a.eta.localeCompare(b.eta))[0];
-  const ultimo = base.filter((o) => o.etapa === "volf" && (o.ingreso || o.eta)).sort((a, b) => (b.ingreso || b.eta).localeCompare(a.ingreso || a.eta))[0];
-  const next = {
-    fabrica: proxSalida ? ["Próxima salida", fCorta(proxSalida.etd)] : null,
-    agua: proxLlegada ? ["Próxima llegada", fCorta(proxLlegada.eta)] : null,
-    volf: ultimo ? ["Último ingreso", fCorta(ultimo.ingreso || ultimo.eta)] : null,
+  const proxVolf = base.filter((o) => o.etapa === "puerto" && o.volfF).sort((a, b) => a.volfF.localeCompare(b.volfF))[0];
+  const ultimo = base.filter((o) => o.etapa === "volf" && o.volfF).sort((a, b) => b.volfF.localeCompare(a.volfF))[0];
+  const next = {  // [texto, fecha, texto corto para el celular]
+    fabrica: proxSalida ? ["Próxima salida", fCorta(proxSalida.etd), "Sale"] : null,
+    agua: proxLlegada ? ["Próxima llegada", fCorta(proxLlegada.eta), "Llega"] : null,
+    puerto: proxVolf ? ["Próximo a VOLF", fCorta(proxVolf.volfF), "A VOLF"] : null,
+    volf: ultimo ? ["Último ingreso", fCorta(ultimo.volfF), "Último"] : null,
   };
-  for (const e of ["fabrica", "agua", "volf"]) {
+  for (const e of ETAPAS) {
     $(`#c-${e}`).textContent = fmt(c[e]);
-    $(`#n-${e}`).innerHTML = next[e] ? `${esc(next[e][0])}<span class="nw">${esc(next[e][1])}</span>` : "";
+    $(`#n-${e}`).innerHTML = next[e] ? `<span class="largo">${esc(next[e][0])}</span><span class="corto">${esc(next[e][2])}</span><span class="nw">${esc(next[e][1])}</span>` : "";
     const st = $(`.station[data-e="${e}"]`);
     st.setAttribute("aria-pressed", String(f.etapa === e));
     st.setAttribute("aria-label", `${st.querySelector(".st-name").textContent}: ${c[e]}.${next[e] ? ` ${next[e][0]}: ${next[e][1]}.` : ""}`);
   }
   $("#route").classList.toggle("filtrando", !!f.etapa);
-  const seg = { fabrica: $(".share .s-fabrica"), agua: $(".share .s-agua"), volf: $(".share .s-volf") };
+  const seg = { fabrica: $(".share .s-fabrica"), agua: $(".share .s-agua"), puerto: $(".share .s-puerto"), volf: $(".share .s-volf") };
   const aplicar = () => { for (const e in seg) { seg[e].style.flexGrow = String(c[e]); seg[e].hidden = !c[e]; } };
   if (!S.barraAnimada) { S.barraAnimada = true; requestAnimationFrame(() => requestAnimationFrame(aplicar)); } else aplicar();
 }
@@ -1128,34 +1185,38 @@ function renderTools() {
 
 function mini(o) {
   const e = o.etapa;
-  const w = e === "volf" ? 100 : e === "agua" && o.prog != null ? Math.round(o.prog * 100) : 0;
+  const w2 = e === "agua" && o.prog != null ? Math.round(o.prog * 100) : null;
+  const w3 = e === "puerto" && o.progP != null ? Math.round(o.progP * 100) : null;
   return `<span class="mini${o.vencida ? " vencida" : ""}" data-e="${e}" aria-hidden="true">` +
     `<i class="nd nd-fab"><span class="emo">${EMO.fabrica}</span></i><i class="sg sg1"></i>` +
-    `<i class="nd nd-agua"><span class="emo">${o.modo === "aereo" ? EMO.aire : EMO.agua}</span></i><i class="sg sg2">${e === "agua" && o.prog != null ? `<b style="width:${w}%"></b>` : ""}</i>` +
+    `<i class="nd nd-agua"><span class="emo">${o.modo === "aereo" ? EMO.aire : EMO.agua}</span></i><i class="sg sg2">${w2 != null ? `<b style="width:${w2}%"></b>` : ""}</i>` +
+    `<i class="nd nd-puerto">${icon("ar")}</i><i class="sg sg3">${w3 != null ? `<b style="width:${w3}%"></b>` : ""}</i>` +
     `<i class="nd nd-volf">${icon("volf")}</i></span>`;
 }
-const ETAPA_TXT = { fabrica: "en fabricación", agua: "en agua", volf: "en VOLF" };
+const ETAPA_TXT = { fabrica: "en fabricación", agua: "en agua", puerto: "en puerto", volf: "en VOLF" };
 function itemOp(o) {
   const pl = S.pls.get(o.id);
   const n = pl?.lineas?.length || 0;
   const c = cuando(o);
   const tags = [`<span class="emo" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span>${esc(o.rubro)}`, esc(pais(o.origen))].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
   return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
-    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">${pl.fuente === "planilla" || pl.fuente === "orden" ? `🗒️ ${fmt(n)} SKU pedido` : `📋 ${fmt(n)} SKU`}</span>` : o.etapa === "agua" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
+    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span>${n ? `<span class="op-pl">${pl.fuente === "planilla" || pl.fuente === "orden" ? `🗒️ ${fmt(n)} SKU pedido` : `📋 ${fmt(n)} SKU`}</span>` : o.etapa === "agua" || o.etapa === "puerto" ? `<span class="op-pl falta">Sin PL</span>` : ""}</span>` +
     `<span class="op-b"><span class="op-prov">${esc(o.prov)}</span><span class="op-when ${c.cls || ""}"><b>${esc(c.big)}</b>${c.small ? `<small>${esc(c.small)}</small>` : ""}</span></span>` +
     mini(o) + `</button></li>`;
 }
 function grupos(ops) {
-  const venc = [], meses = new Map(), sinEta = [], llegaron = [];
+  const puerto = [], venc = [], meses = new Map(), sinEta = [], llegaron = [];
   for (const o of ops) {
     if (o.etapa === "volf") llegaron.push(o);
+    else if (o.etapa === "puerto") puerto.push(o);
     else if (o.vencida) venc.push(o);
     else if (o.eta) { const k = o.eta.slice(0, 7); if (!meses.has(k)) meses.set(k, []); meses.get(k).push(o); }
     else sinEta.push(o);
   }
   const porEta = (a, b) => a.eta.localeCompare(b.eta) || opNum(a) - opNum(b);
   const out = [];
-  if (venc.length) out.push({ titulo: "⚠️ Pasó la ETA", sub: "sin ingreso registrado", ops: venc.sort(porEta), alerta: true });
+  if (puerto.length) out.push({ titulo: "En puerto", bandera: true, sub: "pasan a VOLF a los 7 días de la ETA", ops: puerto.sort((a, b) => (a.volfF || "9999").localeCompare(b.volfF || "9999") || opNum(a) - opNum(b)) });
+  if (venc.length) out.push({ titulo: "⚠️ Pasó la ETA", sub: "y sigue en fabricación", ops: venc.sort(porEta), alerta: true });
   for (const k of [...meses.keys()].sort()) {
     const [y, m] = k.split("-").map(Number);
     out.push({ titulo: MES_L[m - 1], anio: y, ops: meses.get(k).sort(porEta) });
@@ -1164,7 +1225,7 @@ function grupos(ops) {
     titulo: "ETA a confirmar",
     ops: sinEta.sort((a, b) => (a.etapa === b.etapa ? 0 : a.etapa === "agua" ? -1 : 1) || (a.etd || "9999").localeCompare(b.etd || "9999") || opNum(a) - opNum(b)),
   });
-  if (llegaron.length) out.push({ titulo: "Ya en VOLF", ops: llegaron.sort((a, b) => (b.ingreso || b.eta || "").localeCompare(a.ingreso || a.eta || "")) });
+  if (llegaron.length) out.push({ titulo: "Ya en VOLF", ops: llegaron.sort((a, b) => (b.volfF || "").localeCompare(a.volfF || "")) });
   return out;
 }
 function htmlHits(ops) {
@@ -1182,7 +1243,7 @@ function htmlHits(ops) {
   return `<section class="grp" aria-label="SKU en tránsito que coinciden"><div class="grp-h"><h2>SKU en tránsito</h2><small>${plural(hits.length, "coincidencia", "coincidencias")}</small></div>
     <ul class="hits">${hits.slice(0, max).map(({ o, l }) => {
       const c = cuando(o);
-      return `<li><button class="hit" data-op="${esc(o.id)}" data-cod="${esc(l.cod)}"><span class="hit-cod">${hl(l.cod, toks)}</span><span class="hit-q">${fmt(l.cant)} ${UM_TXT[l.um] || "u"}</span><span class="hit-desc">${hl(l.desc, toks)}</span><span class="hit-op">OP ${esc(o.op)}, ${o.etapa === "volf" ? "ya en VOLF" : esc(c.big === "ETA a confirmar" ? "ETA a confirmar" : `${c.cls === "alert" ? "ETA" : "llega"} ${c.big}`)}</span></button></li>`;
+      return `<li><button class="hit" data-op="${esc(o.id)}" data-cod="${esc(l.cod)}"><span class="hit-cod">${hl(l.cod, toks)}</span><span class="hit-q">${fmt(l.cant)} ${UM_TXT[l.um] || "u"}</span><span class="hit-desc">${hl(l.desc, toks)}</span><span class="hit-op">OP ${esc(o.op)}, ${o.etapa === "volf" ? "ya en VOLF" : o.etapa === "puerto" ? esc(o.volfF ? `en puerto, a VOLF ${fCorta(o.volfF)}` : "en puerto") : esc(c.big === "ETA a confirmar" ? "ETA a confirmar" : `${c.cls === "alert" ? "ETA" : "llega"} ${c.big}`)}</span></button></li>`;
     }).join("")}</ul>${hits.length > max ? `<p class="more">Se muestran las primeras ${max}. Afiná la búsqueda para ver el resto.</p>` : ""}</section>`;
 }
 function htmlLogin() {
@@ -1228,7 +1289,7 @@ function renderList() {
     return;
   }
   el.innerHTML = hits + grupos(ops).map((g) =>
-    `<section class="grp${g.alerta ? " alerta" : ""}"><div class="grp-h"><h2>${esc(g.titulo)}${g.anio ? ` <span>${g.anio}</span>` : ""}</h2><small>${plural(g.ops.length, "operación", "operaciones")}${g.sub ? `, ${esc(g.sub)}` : ""}</small></div><ul class="ops">${g.ops.map(itemOp).join("")}</ul></section>`
+    `<section class="grp${g.alerta ? " alerta" : ""}"><div class="grp-h"><h2>${g.bandera ? icon("ar", "h-flag") : ""}${esc(g.titulo)}${g.anio ? ` <span>${g.anio}</span>` : ""}</h2><small>${plural(g.ops.length, "operación", "operaciones")}${g.sub ? `, ${esc(g.sub)}` : ""}</small></div><ul class="ops">${g.ops.map(itemOp).join("")}</ul></section>`
   ).join("");
 }
 function renderTodo() {
@@ -1250,8 +1311,8 @@ function facts(o) {
     ["Factura", o.fc],
     ["Peso bruto", o.peso ? `${fmt(o.peso)} kg` : ""],
     ["Salida (ETD)", fNum(o.etd)],
-    ["Llegada (ETA)", fNum(o.eta)],
-    ["Ingreso a depósito", fNum(o.ingreso)],
+    ["Llegada a puerto (ETA)", fNum(o.eta)],
+    [o.etapa === "volf" ? "En VOLF desde" : "Llegada a VOLF (ETA + 7 días)", fNum(o.volfF)],
     ["Agencia", o.agencia],
     ["Despachante", o.despachante],
     ["Expediente INAL", o.inal],
@@ -1260,29 +1321,35 @@ function facts(o) {
   ].filter(([, v]) => v != null && String(v).trim() !== "");
   return filas.map(([k, v]) => `<div class="fact"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
 }
+const pos = (p) => `clamp(14px, ${p}%, calc(100% - 14px))`;  // el punto "hoy" no se monta sobre los íconos
 function htmlDetalleMain(o, animar) {
-  const pct = o.etapa === "volf" ? 100 : o.etapa === "agua" && o.prog != null ? Math.round(o.prog * 100) : 0;
-  const ini = animar ? 0 : pct;
+  const e = o.etapa;
+  const pct2 = e === "puerto" || e === "volf" ? 100 : e === "agua" && o.prog != null ? Math.round(o.prog * 100) : 0;
+  const pct3 = e === "volf" ? 100 : e === "puerto" && o.progP != null ? Math.round(o.progP * 100) : 0;
+  const hoy2 = e === "agua" && o.prog != null, hoy3 = e === "puerto" && o.progP != null;
+  const w = (p) => (animar ? 0 : p);
   const L = legs(o);
-  const hayHoy = o.etapa === "agua" && o.prog != null;
   return `<header class="d-head d-pad">
       <h2 id="det-t">${esc(o.prov)}</h2>
       <p class="d-sub"><span class="emo" style="display:inline" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span> ${esc(o.rubro)}${o.origen ? `, desde ${esc(pais(o.origen))}` : ""}</p>
       ${o.destino !== "Argentina" ? `<span class="d-dest">Destino ${esc(o.destino)}</span>` : ""}
     </header>
     <div class="d-pad">
-      <section class="jr${o.vencida ? " vencida" : ""}${o.modo === "aereo" ? " aire" : ""}" data-e="${o.etapa}" aria-label="Recorrido de la operación">
+      <section class="jr${o.vencida ? " vencida" : ""}${o.modo === "aereo" ? " aire" : ""}" data-e="${e}" aria-label="Recorrido de la operación">
         <div class="jr-line" aria-hidden="true">
           <span class="jn jn-fab"><span class="emo">${EMO.fabrica}</span></span>
-          <span class="js js-1"><span class="js-fill" style="width:${o.etapa === "fabrica" ? 0 : 100}%"></span></span>
+          <span class="js js-1"><span class="js-fill" style="width:${e === "fabrica" ? 0 : 100}%"></span></span>
           <span class="jn jn-agua"><span class="emo">${o.modo === "aereo" ? EMO.aire : EMO.agua}</span></span>
-          <span class="js js-2"><span class="js-fill" data-w="${pct}" style="width:${ini}%"></span>${hayHoy ? `<span class="js-hoy" data-l="${pct}" style="left:${ini}%"><span>hoy</span></span>` : ""}</span>
+          <span class="js js-2"><span class="js-fill" data-w="${pct2}" style="width:${w(pct2)}%"></span>${hoy2 ? `<span class="js-hoy" data-l="${pct2}" style="left:${pos(w(pct2))}"><span>hoy</span></span>` : ""}</span>
+          <span class="jn jn-puerto">${icon("ar")}</span>
+          <span class="js js-3"><span class="js-fill" data-w="${pct3}" style="width:${w(pct3)}%"></span>${hoy3 ? `<span class="js-hoy" data-l="${pct3}" style="left:${pos(w(pct3))}"><span>hoy</span></span>` : ""}</span>
           <span class="jn jn-volf">${icon("volf")}</span>
         </div>
         <div class="jr-legs">
           <div class="leg leg-1"><b>Fabricación</b><span>${L[0]}</span></div>
           <div class="leg leg-2"><b>${o.modo === "aereo" ? "En vuelo" : "En agua"}</b><span>${L[1]}</span></div>
-          <div class="leg leg-3"><b>En VOLF</b><span>${L[2]}</span></div>
+          <div class="leg leg-3"><b>${o.modo === "aereo" ? "Aeropuerto" : "Puerto"}</b><span>${L[2]}</span></div>
+          <div class="leg leg-4"><b>En VOLF</b><span>${L[3]}</span></div>
         </div>
         <p class="jr-status${o.vencida ? " alert" : ""}">${esc(estadoTexto(o))}</p>
         <p class="jr-estado">${o.estado ? `Estado en la planilla: ${esc(o.estado)}` : "Sin estado cargado en la planilla."}</p>
@@ -1347,9 +1414,8 @@ function renderDetalle(animar = false) {
   $("#det-log").innerHTML = `<div class="d-pad">${htmlLogistica(o)}</div>`;
   if (animar) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const f = $("#det-main .js-2 .js-fill"), h = $("#det-main .js-hoy");
-      if (f) f.style.width = f.dataset.w + "%";
-      if (h) h.style.left = h.dataset.l + "%";
+      document.querySelectorAll("#det-main .js-fill[data-w]").forEach((f) => { f.style.width = f.dataset.w + "%"; });
+      document.querySelectorAll("#det-main .js-hoy[data-l]").forEach((h) => { h.style.left = pos(h.dataset.l); });
     }));
   }
   const editando = S.pl && S.pl.opId === o.id && S.pl.fase !== "elegir";
@@ -1661,10 +1727,10 @@ function htmlDiff(a) {
   const nombre = (o) => `${esc(o.op)} ${esc(o.prov)}`;
   const val = (c) => (["ETD", "ETA", "Ingreso a depósito"].includes(c.campo) ? fNum : (x) => x)(c.antes) || "vacío";
   const val2 = (c) => (["ETD", "ETA", "Ingreso a depósito"].includes(c.campo) ? fNum : (x) => x)(c.despues) || "vacío";
-  const cnt = { fabrica: 0, agua: 0, volf: 0 };
+  const cnt = { fabrica: 0, agua: 0, puerto: 0, volf: 0 };
   res.ops.forEach((o) => cnt[o.etapa]++);
   const nada = !diff.nuevas.length && !diff.cambios.length && !diff.bajas.length;
-  return `<p class="diff-sum">${plural(res.ops.length, "operación", "operaciones")} en la hoja ${esc(res.hoja)}: ${fmt(cnt.fabrica)} en fabricación, ${fmt(cnt.agua)} en agua y ${fmt(cnt.volf)} en VOLF.</p>
+  return `<p class="diff-sum">${plural(res.ops.length, "operación", "operaciones")} en la hoja ${esc(res.hoja)}: ${fmt(cnt.fabrica)} en fabricación, ${fmt(cnt.agua)} en agua, ${fmt(cnt.puerto)} en puerto y ${fmt(cnt.volf)} en VOLF.</p>
     ${res.avisos.length ? `<div class="avisos">Revisá en la planilla:<ul>${res.avisos.slice(0, 12).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
     <div class="diff">
       ${nada && S.datos ? `<h4>No hay cambios respecto de lo que muestra la app.</h4>` : ""}
