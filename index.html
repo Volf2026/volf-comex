@@ -983,9 +983,11 @@ function derivar(o) {
   const _txt = norm([o.op, o.prov, o.rubro, o.origen, pais(o.origen), o.puerto, o.bl, o.contenedor, o.fc, o.buque, o.destino, o.estado, o.producto].join(" "));
   return { ...o, etapa, etaD, etdD, prog, progP, volfF, volfD: dias(volfF), vencida, _txt };
 }
+const DIAS_VISIBLE_EN_VOLF = 15;  // las que ya llegaron a VOLF dejan de mostrarse a los 15 días
+const visible = (o) => !(o.etapa === "volf" && o.volfF && -o.volfD >= DIAS_VISIBLE_EN_VOLF);
 function aplicarDatos(d) {
   S.datos = d;
-  S.ops = (d.ops || []).map(derivar);
+  S.ops = (d.ops || []).map(derivar).filter(visible);
   S.pls = new Map(Object.entries(d.pls || {}));
 }
 const opPorId = (id) => S.ops.find((o) => o.id === id) || null;
@@ -1225,7 +1227,7 @@ function grupos(ops) {
     titulo: "ETA a confirmar",
     ops: sinEta.sort((a, b) => (a.etapa === b.etapa ? 0 : a.etapa === "agua" ? -1 : 1) || (a.etd || "9999").localeCompare(b.etd || "9999") || opNum(a) - opNum(b)),
   });
-  if (llegaron.length) out.push({ titulo: "Ya en VOLF", ops: llegaron.sort((a, b) => (b.volfF || "").localeCompare(a.volfF || "")) });
+  if (llegaron.length) out.push({ titulo: "Ya en VOLF", sub: `llegadas de los últimos ${DIAS_VISIBLE_EN_VOLF} días`, ops: llegaron.sort((a, b) => (b.volfF || "").localeCompare(a.volfF || "")) });
   return out;
 }
 function htmlHits(ops) {
