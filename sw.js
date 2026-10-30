@@ -1,5 +1,5 @@
 /* Importaciones VOLF: funciona sin conexión con los últimos datos descargados */
-const CACHE = "comex-volf-v2";
+const CACHE = "comex-volf-v3";
 const BASE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./jost-400.woff2", "./jost-500.woff2", "./bodoni-moda.woff2"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())); });
