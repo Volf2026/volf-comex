@@ -2097,7 +2097,23 @@ async function init() {
     if (document.visibilityState === "visible" && S.estado === "ok" && Date.now() - S.ultimaCarga > 300000 && !editando()) cargar();
   }, 60000);
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.instalar = e; $("#btn-inst").hidden = false; });
-  if ("serviceWorker" in navigator && /^(https:|http:\/\/localhost)/.test(location.href)) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && /^(https:|http:\/\/localhost|http:\/\/127\.0\.0\.1)/.test(location.href)) {
+    // Versión nueva de la app: se busca al volver a la app (y cada media hora) y, cuando llega, la página se recarga sola.
+    const habia = !!navigator.serviceWorker.controller;
+    let recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!habia || recargando) return;
+      if (editando()) { toast("Hay una versión nueva de la app: se ve al volver a abrirla."); return; }
+      recargando = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      let ultima = Date.now();
+      const buscar = () => { ultima = Date.now(); reg.update().catch(() => {}); };
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") buscar(); });
+      setInterval(() => { if (document.visibilityState === "visible" && Date.now() - ultima > 1800000) buscar(); }, 60000);
+    }).catch(() => {});
+  }
   renderTodo();
   await cargar();
 }
