@@ -187,7 +187,6 @@ svg { display: block; }
 .op-tags { display: flex; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .op-tags > span + span { padding-left: 8px; border-left: 1px solid var(--rule); }
 .op-tags .emo { display: inline; margin-right: 4px; }
-.tag-dest { color: var(--vino); }
 .op-rel { font-size: 12.5px; color: var(--muted); text-align: right; white-space: nowrap; }
 .op-c { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
 .op-pl { flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; }
@@ -252,7 +251,6 @@ dialog.sheet::backdrop { background: rgba(29, 29, 27, .32); }
 .d-op { margin: 0; font-size: 13px; color: var(--muted); letter-spacing: .02em; }
 .d-head h2 { margin: 0; font: 400 clamp(26px, 5vw, 34px)/1.1 var(--serif); letter-spacing: .01em; }
 .d-sub { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
-.d-dest { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--vino); border: 1px solid currentColor; border-radius: 999px; padding: 2px 10px; }
 
 /* recorrido de la operación: en fila en la computadora y en columna en el celular */
 .jr { margin-top: 30px; }
@@ -425,7 +423,7 @@ details.log[open] > summary::after { content: "Ocultar"; }
   .tools { padding-top: 28px; gap: 10px 8px; }
   .search input { padding: 10px 12px 10px 38px; }
   .sel { padding: 6px 28px 6px 12px; font-size: 13px; border-radius: 999px; background-position: right 11px center; }
-  .chips { flex: 1 1 0; min-width: 0; }
+  .chips { flex: 1 1 100%; min-width: 0; }
   .grp { margin-top: 36px; }
   .grp-h h2 { font-size: 19px; }
   .op { padding: 16px 10px; }
@@ -510,7 +508,6 @@ body:has(dialog[open]) { overflow: hidden; }
 
   <section class="tools" id="tools" hidden>
     <label class="search"><svg aria-hidden="true"><use href="#i-search"/></svg><span class="vh">Buscar</span><input id="q" type="search" placeholder="Buscar OP, proveedor o SKU" autocomplete="off" enterkeyhint="search"></label>
-    <select class="sel" id="destino" aria-label="Destino"></select>
     <div class="chips" id="chips" role="group" aria-label="Rubro"></div>
   </section>
 
@@ -544,8 +541,8 @@ body:has(dialog[open]) { overflow: hidden; }
 
 <script>
 /* ===== Lectura de la planilla de operaciones COMEX (hoja OP IMPO) =====
-   Solo toma estado, fechas, logística y rubro. Nunca guarda montos,
-   precios ni observaciones (OBS se usa solo para detectar el destino). */
+   Solo toma las operaciones de Argentina (el proveedor pintado de verde) y de
+   ellas estado, fechas, logística y rubro. Nunca guarda montos, precios ni observaciones. */
 const ComexParse = (() => {
   const norm = (s) =>
     String(s ?? "")
@@ -584,8 +581,6 @@ const ComexParse = (() => {
     despacho: ["NRO DESPACHO"],
     despachante: ["DESPACHANTE"],
     estado: ["ESTADO", "ESTADO DE EMBARQUE"],
-    obs: ["OBS", "OBSERVACIONES"],
-    destino: ["DESTINO"],
   };
 
   // Excel serial / texto -> "AAAA-MM-DD"
@@ -627,28 +622,75 @@ const ComexParse = (() => {
     return tieneBL ? "agua" : "fabrica";
   }
 
-  // ---- Regla de COMEX: embarcada la mercadería, la ETA es la llegada a puerto y 7 días después está en VOLF.
-  // Si la planilla dice que ya está en VOLF, vale eso; si sigue en fabricación, la fecha no la mueve.
-  const DIAS_A_VOLF = 7;
+  // ---- Regla de COMEX: embarcada la mercadería, la ETA es la llegada a puerto y 10 días hábiles después está en
+  // VOLF (sin sábados, domingos ni feriados). Si la planilla dice que ya está en VOLF, vale eso; si sigue en
+  // fabricación, la fecha no la mueve. Los feriados vienen con los datos publicados (los mismos que usa la app de COMEX).
+  const DIAS_HABILES_A_VOLF = 10;
+  let FERIADOS = new Set([
+    "2026-01-01", "2026-02-16", "2026-02-17", "2026-03-23", "2026-03-24", "2026-04-02", "2026-04-03", "2026-05-01",
+    "2026-05-25", "2026-06-15", "2026-07-09", "2026-07-10", "2026-08-17", "2026-10-12", "2026-11-09", "2026-11-10",
+    "2026-11-23", "2026-12-07", "2026-12-08", "2026-12-25", "2027-01-01", "2027-02-08", "2027-02-09", "2027-03-24",
+    "2027-03-25", "2027-03-26", "2027-04-02", "2027-05-25", "2027-06-21", "2027-07-09", "2027-08-16", "2027-10-11",
+    "2027-12-08",
+  ]);
+  function usarFeriados(lista) { if (Array.isArray(lista) && lista.length) FERIADOS = new Set(lista); }
+  const isoDe = (d) => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  const fechaDe = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
+  const esHabil = (d) => d.getDay() !== 0 && d.getDay() !== 6 && !FERIADOS.has(isoDe(d));
+  /** El n-ésimo día hábil después de la fecha (no cuenta el mismo día). */
+  function sumarHabiles(iso, n) {
+    if (!iso) return null;
+    const d = fechaDe(iso);
+    for (let k = 0; k < n; ) { d.setDate(d.getDate() + 1); if (esHabil(d)) k++; }
+    return isoDe(d);
+  }
+  /** Días hábiles pasados desde la fecha hasta hoy (sin contar la fecha misma). */
+  function habilesDesde(iso, ahora) {
+    if (!iso) return 0;
+    const h = ahora || new Date(), fin = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+    const d = fechaDe(iso);
+    let k = 0;
+    while (d < fin) { d.setDate(d.getDate() + 1); if (esHabil(d)) k++; }
+    return k;
+  }
   function etapaHoy(base, eta, ahora) {
     if (base === "volf" || base === "fabrica" || !eta) return base;
-    const [y, m, d] = eta.split("-").map(Number);
-    const h = ahora || new Date();
-    const dif = Math.round((new Date(h.getFullYear(), h.getMonth(), h.getDate()) - new Date(y, m - 1, d)) / 864e5);
-    if (dif >= DIAS_A_VOLF) return "volf";
-    if (dif >= 0) return "puerto";
+    const h = ahora || new Date(), hoyIso = isoDe(new Date(h.getFullYear(), h.getMonth(), h.getDate()));
+    if (hoyIso >= sumarHabiles(eta, DIAS_HABILES_A_VOLF)) return "volf";
+    if (hoyIso >= eta) return "puerto";
     return base;
   }
 
-  const PAISES = [
-    ["PERU", "Perú"], ["PARAGUAY", "Paraguay"], ["URUGUAY", "Uruguay"], ["BRASIL", "Brasil"],
-    ["BRAZIL", "Brasil"], ["SANTOS", "Brasil"], ["CHILE", "Chile"], ["BOLIVIA", "Bolivia"], ["COLOMBIA", "Colombia"],
-  ];
-  function paisEn(t) {
-    if (!t) return null;
-    for (const [k, v] of PAISES) if (new RegExp("\\b" + k + "\\b").test(t)) return v;
-    if (/\bARG(ENTINA)?\b/.test(t)) return "Argentina";
+  // ---- Destino: en el libro de COMEX el color del proveedor marca el país; verde = Argentina, lo único que se toma.
+  const TEMA_OFFICE = ["FFFFFF", "000000", "E7E6E6", "44546A", "5B9BD5", "ED7D31", "A5A5A5", "FFC000", "4472C4", "70AD47", "0563C1", "954F72"];
+  function hls(rgb) {
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(rgb.slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return [0, l, 0];
+    const dd = mx - mn, s = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+    let h = mx === r ? (g - b) / dd + (g < b ? 6 : 0) : mx === g ? (b - r) / dd + 2 : (r - g) / dd + 4;
+    return [h * 60, l, s];
+  }
+  function conTinte(rgb, t) {
+    const [h, l0, s] = hls(rgb);
+    const l = t < 0 ? l0 * (1 + t) : l0 * (1 - t) + t;
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, hh = h / 360;
+    const c = (x) => { x = (x + 1) % 1; return x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p; };
+    return [c(hh + 1 / 3), c(hh), c(hh - 1 / 3)].map((v) => Math.round((s === 0 ? l : v) * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
+  }
+  /** Color de fondo de una celda leída con cellStyles (RRGGBB) o null. */
+  function colorCelda(celda, tema) {
+    const s = celda && celda.s;
+    if (!s || !s.patternType || s.patternType === "none" || !s.fgColor) return null;
+    const c = s.fgColor;
+    if (c.rgb && /^[0-9A-F]{6,8}$/i.test(c.rgb)) return c.rgb.slice(-6).toUpperCase();
+    if (c.theme != null && tema[c.theme]) return c.tint ? conTinte(tema[c.theme], c.tint) : tema[c.theme].toUpperCase();
     return null;
+  }
+  function esVerde(rgb) {
+    if (!rgb) return false;
+    const [h, l, s] = hls(rgb);
+    return h >= 75 && h <= 170 && s >= 0.25 && l >= 0.12 && l <= 0.93;
   }
 
   const RUBRO_LABEL = {
@@ -675,8 +717,17 @@ const ComexParse = (() => {
     return best;
   }
 
+  /** Filas con datos; cada una recuerda su número de fila en la hoja (__r) para poder leer el color de sus celdas. */
   function filasDe(XLSX, ws) {
-    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
+    if (!ws || !ws["!ref"]) return [];
+    const r0 = XLSX.utils.decode_range(ws["!ref"]).s.r;
+    const out = [];
+    XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true }).forEach((fila, i) => {
+      if (!fila || fila.every((c) => c == null || (typeof c === "string" && !c.trim()))) return;
+      fila.__r = r0 + i;
+      out.push(fila);
+    });
+    return out;
   }
 
   function indiceColumnas(header) {
@@ -725,40 +776,28 @@ const ComexParse = (() => {
     return mapa;
   }
 
-  function mapaDestinos(XLSX, wb, hojaOps) {
-    const mapa = new Map();
-    for (const name of wb.SheetNames) {
-      if (name === hojaOps) continue;
-      const rows = filasDe(XLSX, wb.Sheets[name]);
-      for (let h = 0; h < Math.min(rows.length, 4); h++) {
-        const H = (rows[h] || []).map(norm);
-        const iD = H.indexOf("DESTINO"), iO = H.indexOf("OP");
-        if (iD < 0 || iO < 0) continue;
-        for (const r of rows.slice(h + 1)) {
-          if (!r || !r[iO] || !r[iD]) continue;
-          const pais = paisEn(norm(r[iD]));
-          if (pais) mapa.set(norm(r[iO]), pais);
-        }
-        break;
-      }
-    }
-    return mapa;
-  }
-
   function idDe(op) {
     return norm(op).replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
 
-  /** Lee el libro y devuelve { ops, avisos, hoja, filas } */
+  /** Lee el libro (leído con cellStyles para ver los colores) y devuelve { ops, avisos, hoja, filas, otros, sinColor } */
   function parseWorkbook(XLSX, wb) {
     const hoja = hojaOperaciones(XLSX, wb);
     if (!hoja) throw new Error("No encontré la hoja de operaciones (busco columnas IM, PROVEEDOR y ETA o ESTADO).");
     const { name, rows, headerRow, idx } = hoja;
+    const ws = wb.Sheets[name];
+    const c0 = XLSX.utils.decode_range(ws["!ref"]).s.c;
+    const tema = (wb.Themes?.themeElements?.clrScheme || []).map((c) => c && c.rgb).filter(Boolean);
+    const temaOk = tema.length >= 10 ? tema : TEMA_OFFICE;
+    if (!Object.keys(ws).some((k) => k[0] !== "!" && ws[k] && ws[k].s)) {
+      throw new Error("No pude leer los colores de la planilla, y sin ellos no sé cuáles son de Argentina. Guardala como .xlsx o .xlsm y volvé a elegirla.");
+    }
     const rubros = mapaRubros(XLSX, wb);
-    const destinos = mapaDestinos(XLSX, wb, name);
     const avisos = [];
     const ops = [];
     const vistos = new Set();
+    const sinColor = [];
+    let otros = 0;
     const get = (r, campo) => (idx[campo] != null ? r[idx[campo]] : null);
 
     for (let i = headerRow + 1; i < rows.length; i++) {
@@ -767,6 +806,8 @@ const ComexParse = (() => {
       const op = text(get(r, "op"));
       const prov = text(get(r, "prov"));
       if (!op || !prov) continue;
+      const rgb = colorCelda(ws[XLSX.utils.encode_cell({ r: r.__r, c: c0 + idx.prov })], temaOk);
+      if (!esVerde(rgb)) { if (rgb) otros++; else sinColor.push(`${op} ${prov}`); continue; } // otro país: no es para Argentina
       const id = idDe(op);
       if (!id || vistos.has(id)) {
         if (id) avisos.push(`La OP ${op} aparece más de una vez; tomé la primera.`);
@@ -796,14 +837,6 @@ const ComexParse = (() => {
 
       let rubro = rubroPorProducto(norm(producto)) || rubroPorProveedor(claveProveedor(prov), rubros) || "Varios";
 
-      const destinoCol = norm(get(r, "destino"));
-      const destino =
-        paisEn(destinoCol) ||
-        destinos.get(norm(op)) ||
-        paisEn(norm(get(r, "obs"))) ||
-        paisEn(norm(terminal)) ||
-        "Argentina";
-
       const etd = fecha(get(r, "etd"));
       const eta = fecha(get(r, "eta"));
       const ingreso = fecha(get(r, "ingreso"));
@@ -812,7 +845,7 @@ const ComexParse = (() => {
 
       const despachoTxt = text(get(r, "despacho"));
       ops.push({
-        id, op, prov, origen: text(get(r, "origen")), rubro, producto, destino,
+        id, op, prov, origen: text(get(r, "origen")), rubro, producto, destino: "Argentina",
         etapa: etapaHoy(etapaDe(estadoN, !!bl), eta), etapa_base: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
         fc: text(get(r, "fc")), inal: text(get(r, "inal")), libre: text(get(r, "libre")),
         bl, peso: numero(get(r, "peso")), puerto, etd, eta, buque, terminal,
@@ -824,7 +857,11 @@ const ComexParse = (() => {
       const na = parseInt(a.op, 10), nb = parseInt(b.op, 10);
       return (isNaN(na) ? 1e9 : na) - (isNaN(nb) ? 1e9 : nb) || a.op.localeCompare(b.op);
     });
-    return { ops, avisos, hoja: name, filas: rows.length - headerRow - 1 };
+    if (!ops.length && (otros || sinColor.length)) {
+      throw new Error("En la hoja OP IMPO no hay ningún proveedor pintado de verde (Argentina): no publico para no dejar la página vacía.");
+    }
+    for (const x of sinColor.slice(0, 5)) avisos.push(`OP ${x}: el proveedor no tiene color, así que no la tomo (solo van las verdes, Argentina).`);
+    return { ops, avisos, hoja: name, filas: rows.length - headerRow - 1, otros, sinColor };
   }
 
   const CAMPOS_DIFF = [["estado", "Estado"], ["etd", "ETD"], ["eta", "ETA"], ["ingreso", "Ingreso a depósito"], ["buque", "Buque"], ["bl", "BL"], ["contenedor", "Contenedor"]];
@@ -843,7 +880,7 @@ const ComexParse = (() => {
     return { nuevas, cambios, bajas };
   }
 
-  return { parseWorkbook, diffOps, norm, fecha, etapaDe, etapaHoy, DIAS_A_VOLF, idDe };
+  return { parseWorkbook, diffOps, norm, fecha, etapaDe, etapaHoy, DIAS_HABILES_A_VOLF, sumarHabiles, habilesDesde, usarFeriados, esVerde, colorCelda, idDe };
 })();
 if (typeof module !== "undefined") module.exports = ComexParse;
 
@@ -879,7 +916,7 @@ const PAISES = {
 const S = {
   estado: "cargando", // cargando | clave | ok | error
   error: "", claveError: "", env: null, clave: "", datos: null, ops: [], pls: new Map(), ultimaCarga: 0,
-  f: { etapa: null, rubro: null, destino: "", q: "" },
+  f: { etapa: null, rubro: null, q: "" },
   abierta: null, plQ: "", pushed: false,
   pl: null, adm: null, cfgMsg: null, instalar: null, barraAnimada: false,
 };
@@ -901,11 +938,6 @@ const pais = (s) => PAISES[norm(s)] || tc(s);
 const opNum = (o) => { const n = parseInt(o.op, 10); return isNaN(n) ? 1e9 : n; };
 function dLocal(iso) { if (!iso) return null; const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); }
 function hoy() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
-function sumarDias(iso, n) {
-  const d = dLocal(iso); if (!d) return null;
-  d.setDate(d.getDate() + n);
-  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-}
 function dias(iso) { const d = dLocal(iso); return d ? Math.round((d - hoy()) / 864e5) : null; }
 function fCorta(iso) { const d = dLocal(iso); return d ? `${d.getDate()} ${MES[d.getMonth()]}` : ""; }
 function fLarga(iso) { const d = dLocal(iso); return d ? `${d.getDate()} de ${MES_L[d.getMonth()].toLowerCase()}` : ""; }
@@ -1000,40 +1032,42 @@ function toast(t) {
 
 /* ---------- datos derivados ---------- */
 function derivar(o) {
-  // La etapa se calcula con la fecha de hoy: así pasa sola a Puerto el día de la ETA y a VOLF 7 días después.
+  // La etapa se calcula con la fecha de hoy: así pasa sola a Puerto el día de la ETA y a VOLF 10 días hábiles después.
   const base = o.etapa_base || (o.etapa === "puerto" ? "agua" : o.etapa);
   const etapa = ComexParse.etapaHoy(base, o.eta);
   const etaD = dias(o.eta), etdD = dias(o.etd);
-  let volfF = o.eta ? sumarDias(o.eta, ComexParse.DIAS_A_VOLF) : null;
+  let volfF = o.eta ? ComexParse.sumarHabiles(o.eta, ComexParse.DIAS_HABILES_A_VOLF) : null;
   if (etapa === "volf" && (!volfF || dias(volfF) > 0)) volfF = o.ingreso && dias(o.ingreso) <= 0 ? o.ingreso : null; // ya en VOLF según la planilla
   let prog = null;
   if (etapa === "agua" && o.etd && o.eta) {
     const a = dLocal(o.etd), b = dLocal(o.eta);
     if (b > a) prog = Math.min(1, Math.max(0, (hoy() - a) / (b - a)));
   }
-  const progP = etapa === "puerto" && o.eta ? Math.min(1, Math.max(0, -etaD / ComexParse.DIAS_A_VOLF)) : null;
+  const habP = etapa === "puerto" && o.eta ? Math.min(ComexParse.DIAS_HABILES_A_VOLF, ComexParse.habilesDesde(o.eta)) : null;
+  const progP = habP != null ? habP / ComexParse.DIAS_HABILES_A_VOLF : null;
   const vencida = etapa === "fabrica" && !!o.eta && etaD < 0;
-  const _txt = norm([o.op, o.prov, o.rubro, o.origen, pais(o.origen), o.puerto, o.bl, o.contenedor, o.fc, o.buque, o.destino, o.estado, o.producto].join(" "));
-  return { ...o, etapa, etaD, etdD, prog, progP, volfF, volfD: dias(volfF), vencida, _txt };
+  const _txt = norm([o.op, o.prov, o.rubro, o.origen, pais(o.origen), o.puerto, o.bl, o.contenedor, o.fc, o.buque, o.estado, o.producto].join(" "));
+  return { ...o, etapa, etaD, etdD, prog, progP, habP, volfF, volfD: dias(volfF), vencida, _txt };
 }
 const DIAS_VISIBLE_EN_VOLF = 15;  // las que ya llegaron a VOLF dejan de mostrarse a los 15 días
 const visible = (o) => !(o.etapa === "volf" && o.volfF && -o.volfD >= DIAS_VISIBLE_EN_VOLF);
+const esArgentina = (o) => !o.destino || o.destino === "Argentina";  // la app de COMEX ya publica solo las de Argentina
 function aplicarDatos(d) {
   S.datos = d;
-  S.ops = (d.ops || []).map(derivar).filter(visible);
+  ComexParse.usarFeriados(d.feriados);  // los mismos feriados con que la app de COMEX cuenta los días hábiles
+  S.ops = (d.ops || []).filter(esArgentina).map(derivar).filter(visible);
   S.pls = new Map(Object.entries(d.pls || {}));
 }
 const opPorId = (id) => S.ops.find((o) => o.id === id) || null;
 const lineaTxt = (l) => norm([l.cod, l.desc, l.odoo, l.pcod, l.pdesc].filter(Boolean).join(" "));
 const coincide = (txt, toks) => toks.every((t) => txt.includes(t));
 
-function filtrar({ sinEtapa = false, sinRubro = false, sinDestino = false } = {}) {
-  const { etapa, rubro, destino, q } = S.f;
+function filtrar({ sinEtapa = false, sinRubro = false } = {}) {
+  const { etapa, rubro, q } = S.f;
   const toks = tokens(q);
   return S.ops.filter((o) => {
     if (!sinEtapa && etapa && o.etapa !== etapa) return false;
     if (!sinRubro && rubro && o.rubro !== rubro) return false;
-    if (!sinDestino && destino && o.destino !== destino) return false;
     if (toks.length && !coincide(o._txt, toks)) {
       const pl = S.pls.get(o.id);
       if (!pl?.lineas?.some((l) => coincide(lineaTxt(l), toks))) return false;
@@ -1149,7 +1183,7 @@ function legs(o) {
   if (!o.eta) l3.push("ETA a confirmar");
   else if (o.vencida) l3.push(`ETA ${nw(fCorta(o.eta))}`);
   else l3.push(`${o.etaD > 0 ? "Llega el" : "Llegó el"} ${nw(fCorta(o.eta))}`);
-  if (o.etapa === "puerto" && o.eta) l3.push(nw(`día ${Math.min(ComexParse.DIAS_A_VOLF, 1 - o.etaD)} de ${ComexParse.DIAS_A_VOLF}`));
+  if (o.etapa === "puerto" && o.eta) l3.push(nw(`${o.habP} de ${ComexParse.DIAS_HABILES_A_VOLF} días hábiles`));
   let l4;
   if (o.etapa === "volf") l4 = o.volfF ? `Desde el ${nw(fCorta(o.volfF))}` : "Llegó";
   else l4 = o.volfF && !o.vencida ? `Llega el ${nw(fCorta(o.volfF))}` : "A confirmar";
@@ -1178,9 +1212,8 @@ function renderHero() {
   const f = S.f;
   let t = n === 1 ? "operación" : "operaciones";
   if (f.rubro) t += ` de ${f.rubro.toLowerCase()}`;
-  if (f.destino) t += ` con destino ${f.destino}`;
   if (f.q) t += ` que ${n === 1 ? "coincide" : "coinciden"} con “${f.q}”`;
-  if (!f.rubro && !f.destino && !f.q) t += " activas";
+  if (!f.rubro && !f.q) t += " activas";
   $("#h-total-t").textContent = t;
   const proxSalida = base.filter((o) => o.etapa === "fabrica" && o.etd && o.etdD >= 0).sort((a, b) => a.etd.localeCompare(b.etd))[0];
   const proxLlegada = base.filter((o) => o.etapa === "agua" && o.eta && o.etaD >= 0).sort((a, b) => a.eta.localeCompare(b.eta))[0];
@@ -1213,12 +1246,6 @@ function renderTools() {
   $("#chips").innerHTML =
     `<button class="chip" data-rubro="" aria-pressed="${!S.f.rubro}">Todos<span>${fmt(total)}</span></button>` +
     rubros.map((r) => `<button class="chip" data-rubro="${esc(r)}" aria-pressed="${S.f.rubro === r}"><span class="emo" aria-hidden="true">${EMO_RUBRO[r] || ""}</span>${esc(r)}<span>${fmt(porRubro.get(r) || 0)}</span></button>`).join("");
-  const porDest = new Map();
-  for (const o of S.ops) porDest.set(o.destino, (porDest.get(o.destino) || 0) + 1);
-  const dests = [...porDest.keys()].sort((a, b) => (a === "Argentina" ? -1 : b === "Argentina" ? 1 : a.localeCompare(b)));
-  const sel = $("#destino");
-  sel.innerHTML = `<option value="">Todos los destinos</option>` + dests.map((d) => `<option value="${esc(d)}"${S.f.destino === d ? " selected" : ""}>${esc(d)} (${porDest.get(d)})</option>`).join("");
-  sel.hidden = dests.length < 2;
 }
 
 function mini(o) {
@@ -1241,7 +1268,7 @@ function itemOp(o) {
     : o.etapa === "agua" || o.etapa === "puerto" ? `<span class="op-pl falta">Sin packing list</span>` : "";
   return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
     `<span class="op-g"><span class="op-prov">${esc(o.prov)}</span><span class="op-fecha ${c.cls || ""}">${esc(c.big)}</span>` +
-    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}${o.destino !== "Argentina" ? `<span class="tag-dest">Destino ${esc(o.destino)}</span>` : ""}</span></span>` +
+    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}</span></span>` +
     `<span class="op-rel ${c.cls || ""}">${esc(c.small)}</span></span>` +
     `<span class="op-c">${mini(o)}${sku}</span></button></li>`;
 }
@@ -1343,7 +1370,6 @@ function renderTodo() {
 function facts(o) {
   const filas = [
     ["Origen", [pais(o.origen), o.puerto && `puerto ${tc(o.puerto)}`].filter(Boolean).join(", ")],
-    ["Destino", o.destino],
     ["Terminal", o.terminal],
     ["Transporte", o.modo === "aereo" ? "Aéreo" : o.cntr ? `Marítimo, ${o.cntr === "LCL" ? "LCL (carga consolidada)" : `contenedor ${o.cntr}`}` : ""],
     ["Contenedor", o.contenedor],
@@ -1353,7 +1379,7 @@ function facts(o) {
     ["Peso bruto", o.peso ? `${fmt(o.peso)} kg` : ""],
     ["Salida (ETD)", fNum(o.etd)],
     ["Llegada a puerto (ETA)", fNum(o.eta)],
-    [o.etapa === "volf" ? "En VOLF desde" : "Llegada a VOLF (ETA + 7 días)", fNum(o.volfF)],
+    [o.etapa === "volf" ? "En VOLF desde" : `Llegada a VOLF (ETA + ${ComexParse.DIAS_HABILES_A_VOLF} días hábiles)`, fNum(o.volfF)],
     ["Agencia", o.agencia],
     ["Despachante", o.despachante],
     ["Expediente INAL", o.inal],
@@ -1384,7 +1410,6 @@ function htmlDetalleMain(o, animar) {
   return `<header class="d-head d-pad">
       <h2 id="det-t">${esc(o.prov)}</h2>
       <p class="d-sub"><span class="emo" style="display:inline" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span> ${esc(o.rubro)}${o.origen ? `, desde ${esc(pais(o.origen))}` : ""}</p>
-      ${o.destino !== "Argentina" ? `<span class="d-dest">Destino ${esc(o.destino)}</span>` : ""}
     </header>
     <div class="d-pad">
       <section class="jr${o.vencida ? " vencida" : ""}" aria-label="Recorrido de la operación">
@@ -1804,7 +1829,8 @@ async function leerPlanilla(file) {
   renderAdm();
   try {
     await xlsxLib();
-    const wb = window.XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellDates: false });
+    // cellStyles: hacen falta los colores del proveedor (verde = Argentina, lo único que se publica)
+    const wb = window.XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellDates: false, cellStyles: true });
     const res = ComexParse.parseWorkbook(window.XLSX, wb);
     if (!res.ops.length) throw new Error("La hoja de operaciones no tiene filas con número de OP y proveedor.");
     Object.assign(a, { res, diff: ComexParse.diffOps(S.datos?.ops || [], res.ops), fase: "revisar" });
@@ -1883,7 +1909,7 @@ function accion(act, el) {
     case "cerrar-adm": $("#adm").close(); break;
     case "abrir-adm": abrirAdm(); break;
     case "limpiar":
-      S.f = { etapa: null, rubro: null, destino: "", q: "" };
+      S.f = { etapa: null, rubro: null, q: "" };
       $("#q").value = "";
       renderTodo();
       break;
@@ -1984,7 +2010,6 @@ function onInput(e) {
 }
 function onChange(e) {
   const t = e.target;
-  if (t.id === "destino") { S.f.destino = t.value; renderTodo(); return; }
   if (t.type === "file" && t.files && t.files[0]) { archivoElegido(t, t.files[0]); t.value = ""; }
 }
 function archivoElegido(input, file) {
