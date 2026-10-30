@@ -1,8 +1,12 @@
-/* Importaciones VOLF: funciona sin conexión con los últimos datos descargados */
-const CACHE = "comex-volf-v3";
+/* Importaciones VOLF: funciona sin conexión con los últimos datos descargados.
+   La página y los datos se piden siempre a la red (revalidando, sin la caché del navegador), así cada versión nueva
+   se ve apenas se publica; lo guardado solo se usa sin conexión. */
+const CACHE = "comex-volf-v4";
 const BASE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./jost-400.woff2", "./jost-500.woff2", "./bodoni-moda.woff2"];
-self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())); });
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
+});
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
@@ -14,7 +18,9 @@ self.addEventListener("fetch", (e) => {
   const datos = url.pathname.endsWith("/datos.enc.json");
   if (datos || req.mode === "navigate") {
     const clave = datos ? "./datos.enc.json" : "./index.html";
-    e.respondWith(fetch(req).then((r) => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then((k) => k.put(clave, c)); } return r; })
+    const red = datos ? fetch(req)
+      : fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then((r) => (r.redirected ? fetch(req) : r));
+    e.respondWith(red.then((r) => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then((k) => k.put(clave, c)); } return r; })
       .catch(() => caches.match(clave)));
     return;
   }
