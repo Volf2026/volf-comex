@@ -1,7 +1,7 @@
 /* Importaciones VOLF: funciona sin conexión con los últimos datos descargados.
    La página y los datos se piden siempre a la red (revalidando, sin la caché del navegador), así cada versión nueva
    se ve apenas se publica; lo guardado solo se usa sin conexión. */
-const CACHE = "comex-volf-v4";
+const CACHE = "comex-volf-v5";
 const BASE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./jost-400.woff2", "./jost-500.woff2", "./bodoni-moda.woff2"];
 self.addEventListener("install", (e) => {
