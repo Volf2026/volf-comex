@@ -32,6 +32,7 @@
   --fab-soft: var(--gris-soft); --sea-soft: var(--vino-soft); --volf-soft: #EDEBE8;
   --port: #5C9BD5; --port-soft: #EBF3FB; --port-ink: #2C6CA6;
   --alert: var(--vino); --alert-soft: var(--vino-soft); --ok: #2E6B3F;
+  --muestra: #C62828; --muestra-soft: #FDECEA;
   --focus: var(--vino);
   --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 4c2 0 2-2.6 4-2.6S6 4 8 4s2 2.6 4 2.6S14 4 16 4' fill='none' stroke='%236E1E2F' stroke-width='1.5'/%3E%3C/svg%3E");
   --wave-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 4c2 0 2-2.6 4-2.6S6 4 8 4s2 2.6 4 2.6S14 4 16 4' fill='none' stroke='%23E2C6CD' stroke-width='1.5'/%3E%3C/svg%3E");
@@ -159,6 +160,10 @@ svg { display: block; }
 .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .chip[aria-pressed="true"] span { color: rgba(255, 255, 255, .65); }
 .chip .emo { display: inline; margin-right: 5px; font-size: 13px; }
+.chip.ch-muestras { color: var(--muestra); border-color: color-mix(in srgb, var(--muestra) 45%, transparent); }
+.chip.ch-muestras span { color: color-mix(in srgb, var(--muestra) 60%, transparent); }
+.chip.ch-muestras[aria-pressed="true"] { background: var(--muestra); border-color: var(--muestra); color: #fff; }
+.chip.ch-muestras[aria-pressed="true"] span { color: rgba(255, 255, 255, .75); }
 
 /* ===== Lista de operaciones ===== */
 .grp { margin-top: 42px; }
@@ -184,6 +189,15 @@ svg { display: block; }
 .op-fecha.tbc { font: 400 13.5px/1.3 var(--sans); color: var(--muted); }
 .op-a { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--muted); }
 .op-num { color: var(--ink-2); font-weight: 500; letter-spacing: .02em; flex: none; }
+.tag-muestra {
+  flex: none; background: var(--muestra); color: #fff; border-radius: 999px; padding: 1px 8px 2px;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; line-height: 1.5;
+}
+.d-muestra {
+  display: flex; gap: 10px; align-items: baseline; margin: 14px 0 0; padding: 10px 14px; border-radius: 10px;
+  background: var(--muestra-soft); color: var(--muestra); border-left: 3px solid var(--muestra); font-size: 14px; line-height: 1.4;
+}
+.d-muestra b { font-weight: 500; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; flex: none; }
 .op-tags { display: flex; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .op-tags > span + span { padding-left: 8px; border-left: 1px solid var(--rule); }
 .op-tags .emo { display: inline; margin-right: 4px; }
@@ -687,6 +701,8 @@ const ComexParse = (() => {
     if (c.theme != null && tema[c.theme]) return c.tint ? conTinte(tema[c.theme], c.tint) : tema[c.theme].toUpperCase();
     return null;
   }
+  /** La OP es una muestra si la planilla lo dice (MUESTRA o MUESTRAS en el PRODUCTO o en el ESTADO). */
+  const esMuestra = (...t) => t.some((x) => x && /\bMUESTRA/.test(norm(x)));
   function esVerde(rgb) {
     if (!rgb) return false;
     const [h, l, s] = hls(rgb);
@@ -845,7 +861,7 @@ const ComexParse = (() => {
 
       const despachoTxt = text(get(r, "despacho"));
       ops.push({
-        id, op, prov, origen: text(get(r, "origen")), rubro, producto, destino: "Argentina",
+        id, op, prov, origen: text(get(r, "origen")), rubro, producto, muestra: esMuestra(producto, estado), destino: "Argentina",
         etapa: etapaHoy(etapaDe(estadoN, !!bl), eta), etapa_base: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
         fc: text(get(r, "fc")), inal: text(get(r, "inal")), libre: text(get(r, "libre")),
         bl, peso: numero(get(r, "peso")), puerto, etd, eta, buque, terminal,
@@ -916,7 +932,7 @@ const PAISES = {
 const S = {
   estado: "cargando", // cargando | clave | ok | error
   error: "", claveError: "", env: null, clave: "", datos: null, ops: [], pls: new Map(), ultimaCarga: 0,
-  f: { etapa: null, rubro: null, q: "" },
+  f: { etapa: null, rubro: null, muestras: false, q: "" },
   abierta: null, plQ: "", pushed: false,
   pl: null, adm: null, cfgMsg: null, instalar: null, barraAnimada: false,
 };
@@ -1062,12 +1078,13 @@ const opPorId = (id) => S.ops.find((o) => o.id === id) || null;
 const lineaTxt = (l) => norm([l.cod, l.desc, l.odoo, l.pcod, l.pdesc].filter(Boolean).join(" "));
 const coincide = (txt, toks) => toks.every((t) => txt.includes(t));
 
-function filtrar({ sinEtapa = false, sinRubro = false } = {}) {
-  const { etapa, rubro, q } = S.f;
+function filtrar({ sinEtapa = false, sinRubro = false, sinMuestras = false } = {}) {
+  const { etapa, rubro, muestras, q } = S.f;
   const toks = tokens(q);
   return S.ops.filter((o) => {
     if (!sinEtapa && etapa && o.etapa !== etapa) return false;
     if (!sinRubro && rubro && o.rubro !== rubro) return false;
+    if (!sinMuestras && muestras && !o.muestra) return false;
     if (toks.length && !coincide(o._txt, toks)) {
       const pl = S.pls.get(o.id);
       if (!pl?.lineas?.some((l) => coincide(lineaTxt(l), toks))) return false;
@@ -1210,10 +1227,10 @@ function renderHero() {
   const n = base.length;
   $("#h-total").textContent = fmt(n);
   const f = S.f;
-  let t = n === 1 ? "operación" : "operaciones";
+  let t = f.muestras ? (n === 1 ? "muestra" : "muestras") : n === 1 ? "operación" : "operaciones";
   if (f.rubro) t += ` de ${f.rubro.toLowerCase()}`;
   if (f.q) t += ` que ${n === 1 ? "coincide" : "coinciden"} con “${f.q}”`;
-  if (!f.rubro && !f.q) t += " activas";
+  if (!f.rubro && !f.q && !f.muestras) t += " activas";
   $("#h-total-t").textContent = t;
   const proxSalida = base.filter((o) => o.etapa === "fabrica" && o.etd && o.etdD >= 0).sort((a, b) => a.etd.localeCompare(b.etd))[0];
   const proxLlegada = base.filter((o) => o.etapa === "agua" && o.eta && o.etaD >= 0).sort((a, b) => a.eta.localeCompare(b.eta))[0];
@@ -1243,8 +1260,10 @@ function renderTools() {
   for (const o of filtrar({ sinRubro: true })) porRubro.set(o.rubro, (porRubro.get(o.rubro) || 0) + 1);
   const rubros = RUBROS.filter((r) => porRubro.has(r) || S.f.rubro === r);
   const total = [...porRubro.values()].reduce((a, b) => a + b, 0);
+  const nMuestras = filtrar({ sinMuestras: true }).filter((o) => o.muestra).length;
   $("#chips").innerHTML =
-    `<button class="chip" data-rubro="" aria-pressed="${!S.f.rubro}">Todos<span>${fmt(total)}</span></button>` +
+    `<button class="chip" data-rubro="" aria-pressed="${!S.f.rubro && !S.f.muestras}">Todos<span>${fmt(total)}</span></button>` +
+    (nMuestras || S.f.muestras ? `<button class="chip ch-muestras" data-muestras="1" aria-pressed="${S.f.muestras}">Muestras<span>${fmt(nMuestras)}</span></button>` : "") +
     rubros.map((r) => `<button class="chip" data-rubro="${esc(r)}" aria-pressed="${S.f.rubro === r}"><span class="emo" aria-hidden="true">${EMO_RUBRO[r] || ""}</span>${esc(r)}<span>${fmt(porRubro.get(r) || 0)}</span></button>`).join("");
 }
 
@@ -1265,10 +1284,10 @@ function itemOp(o) {
   const c = cuando(o);
   const tags = [`<span class="emo" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span>${esc(o.rubro)}`, esc(pais(o.origen))].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
   const sku = n ? `<span class="op-pl">${fmt(n)} SKU${pl.fuente === "planilla" || pl.fuente === "orden" ? " pedidos" : ""}</span>`
-    : o.etapa === "agua" || o.etapa === "puerto" ? `<span class="op-pl falta">Sin packing list</span>` : "";
-  return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
+    : !o.muestra && (o.etapa === "agua" || o.etapa === "puerto") ? `<span class="op-pl falta">Sin packing list</span>` : "";
+  return `<li><button class="op" data-op="${esc(o.id)}" aria-label="${esc(`OP ${o.op}${o.muestra ? ", muestra" : ""}, ${o.prov}, ${ETAPA_TXT[o.etapa]}, ${c.big} ${c.small}`)}">` +
     `<span class="op-g"><span class="op-prov">${esc(o.prov)}</span><span class="op-fecha ${c.cls || ""}">${esc(c.big)}</span>` +
-    `<span class="op-a"><span class="op-num">${esc(o.op)}</span><span class="op-tags">${tags}</span></span>` +
+    `<span class="op-a"><span class="op-num">${esc(o.op)}</span>${o.muestra ? `<span class="tag-muestra">Muestra</span>` : ""}<span class="op-tags">${tags}</span></span>` +
     `<span class="op-rel ${c.cls || ""}">${esc(c.small)}</span></span>` +
     `<span class="op-c">${mini(o)}${sku}</span></button></li>`;
 }
@@ -1410,6 +1429,7 @@ function htmlDetalleMain(o, animar) {
   return `<header class="d-head d-pad">
       <h2 id="det-t">${esc(o.prov)}</h2>
       <p class="d-sub"><span class="emo" style="display:inline" aria-hidden="true">${EMO_RUBRO[o.rubro] || ""}</span> ${esc(o.rubro)}${o.origen ? `, desde ${esc(pais(o.origen))}` : ""}</p>
+      ${o.muestra ? `<p class="d-muestra" role="note"><b>Muestra</b><span>${o.producto ? esc(tc(o.producto)) : "Esta operación es una muestra."}</span></p>` : ""}
     </header>
     <div class="d-pad">
       <section class="jr${o.vencida ? " vencida" : ""}" aria-label="Recorrido de la operación">
@@ -1444,7 +1464,7 @@ function htmlPL(o) {
   const pl = S.pls.get(o.id);
   if (!pl?.lineas?.length) {
     return `<section class="sec" id="pl-sec"><div class="sec-h"><h3>Packing list</h3></div>
-      <div class="pl-empty"><p>${o.etapa === "fabrica" ? "📄 El packing list llega cuando el proveedor embarca la mercadería." : "📄 Falta cargar el packing list de esta operación."}</p>
+      <div class="pl-empty"><p>${o.muestra ? "📄 Es una muestra: no tiene packing list cargado." : o.etapa === "fabrica" ? "📄 El packing list llega cuando el proveedor embarca la mercadería." : "📄 Falta cargar el packing list de esta operación."}</p>
       ${esAdmin() ? `<div class="acts"><button class="btn primary small" data-act="pl-cargar">${icon("i-up")}Cargar packing list</button><button class="btn small" data-act="pl-pegar">Pegar filas desde Excel</button><button class="btn small" data-act="pl-manual">Cargar a mano</button></div>` : ""}</div></section>`;
   }
   const chk = control(pl.lineas, pl.declarado);
@@ -1909,7 +1929,7 @@ function accion(act, el) {
     case "cerrar-adm": $("#adm").close(); break;
     case "abrir-adm": abrirAdm(); break;
     case "limpiar":
-      S.f = { etapa: null, rubro: null, q: "" };
+      S.f = { etapa: null, rubro: null, muestras: false, q: "" };
       $("#q").value = "";
       renderTodo();
       break;
@@ -1973,7 +1993,12 @@ function onClick(e) {
   const st = t.closest(".station");
   if (st) { S.f.etapa = S.f.etapa === st.dataset.e ? null : st.dataset.e; renderTodo(); return; }
   const chip = t.closest(".chip");
-  if (chip) { S.f.rubro = chip.dataset.rubro || null; renderTodo(); return; }
+  if (chip) {
+    if (chip.dataset.muestras) S.f.muestras = !S.f.muestras;
+    else { S.f.rubro = chip.dataset.rubro || null; if (!S.f.rubro) S.f.muestras = false; }
+    renderTodo();
+    return;
+  }
   const op = t.closest(".op[data-op]");
   if (op) { abrir(op.dataset.op); return; }
   const hit = t.closest(".hit[data-op]");
