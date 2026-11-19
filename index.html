@@ -636,42 +636,18 @@ const ComexParse = (() => {
     return tieneBL ? "agua" : "fabrica";
   }
 
-  // ---- Regla de COMEX: embarcada la mercadería, la ETA es la llegada a puerto y 10 días hábiles después está en
-  // VOLF (sin sábados, domingos ni feriados). Si la planilla dice que ya está en VOLF, vale eso; si sigue en
-  // fabricación, la fecha no la mueve. Los feriados vienen con los datos publicados (los mismos que usa la app de COMEX).
-  const DIAS_HABILES_A_VOLF = 10;
-  let FERIADOS = new Set([
-    "2026-01-01", "2026-02-16", "2026-02-17", "2026-03-23", "2026-03-24", "2026-04-02", "2026-04-03", "2026-05-01",
-    "2026-05-25", "2026-06-15", "2026-07-09", "2026-07-10", "2026-08-17", "2026-10-12", "2026-11-09", "2026-11-10",
-    "2026-11-23", "2026-12-07", "2026-12-08", "2026-12-25", "2027-01-01", "2027-02-08", "2027-02-09", "2027-03-24",
-    "2027-03-25", "2027-03-26", "2027-04-02", "2027-05-25", "2027-06-21", "2027-07-09", "2027-08-16", "2027-10-11",
-    "2027-12-08",
-  ]);
-  function usarFeriados(lista) { if (Array.isArray(lista) && lista.length) FERIADOS = new Set(lista); }
-  const isoDe = (d) => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-  const fechaDe = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
-  const esHabil = (d) => d.getDay() !== 0 && d.getDay() !== 6 && !FERIADOS.has(isoDe(d));
-  /** El n-ésimo día hábil después de la fecha (no cuenta el mismo día). */
-  function sumarHabiles(iso, n) {
-    if (!iso) return null;
-    const d = fechaDe(iso);
-    for (let k = 0; k < n; ) { d.setDate(d.getDate() + 1); if (esHabil(d)) k++; }
-    return isoDe(d);
-  }
-  /** Días hábiles pasados desde la fecha hasta hoy (sin contar la fecha misma). */
-  function habilesDesde(iso, ahora) {
-    if (!iso) return 0;
-    const h = ahora || new Date(), fin = new Date(h.getFullYear(), h.getMonth(), h.getDate());
-    const d = fechaDe(iso);
-    let k = 0;
-    while (d < fin) { d.setDate(d.getDate() + 1); if (esHabil(d)) k++; }
-    return k;
-  }
-  function etapaHoy(base, eta, ahora) {
-    if (base === "volf" || base === "fabrica" || !eta) return base;
-    const h = ahora || new Date(), hoyIso = isoDe(new Date(h.getFullYear(), h.getMonth(), h.getDate()));
-    if (hoyIso >= sumarHabiles(eta, DIAS_HABILES_A_VOLF)) return "volf";
-    if (hoyIso >= eta) return "puerto";
+  // ---- Fechas de llegada: a puerto, la ETA (columna M del libro); a VOLF, la F. APROX INGRESO A DEPO (columna V).
+  // Si la planilla dice que ya está en VOLF, vale eso; si sigue en fabricación, las fechas no la mueven.
+  // Una F. APROX INGRESO A DEPO anterior a la ETA es un error de carga (no entra al depósito antes de llegar a puerto):
+  // no se usa y la llegada a VOLF queda a confirmar.
+  const fechaVolf = (eta, ingreso) => (ingreso && !(eta && ingreso < eta) ? ingreso : null);
+  function etapaHoy(base, eta, ingreso, ahora) {
+    if (base === "volf" || base === "fabrica") return base;
+    ingreso = fechaVolf(eta, ingreso);
+    const h = ahora || new Date();
+    const hoyIso = [h.getFullYear(), String(h.getMonth() + 1).padStart(2, "0"), String(h.getDate()).padStart(2, "0")].join("-");
+    if (ingreso && hoyIso >= ingreso) return "volf";
+    if (eta && hoyIso >= eta) return "puerto";
     return base;
   }
 
@@ -862,7 +838,7 @@ const ComexParse = (() => {
       const despachoTxt = text(get(r, "despacho"));
       ops.push({
         id, op, prov, origen: text(get(r, "origen")), rubro, producto, muestra: esMuestra(producto, estado), destino: "Argentina",
-        etapa: etapaHoy(etapaDe(estadoN, !!bl), eta), etapa_base: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
+        etapa: etapaHoy(etapaDe(estadoN, !!bl), eta, ingreso), etapa_base: etapaDe(estadoN, !!bl), estado, modo: aereo ? "aereo" : "maritimo",
         fc: text(get(r, "fc")), inal: text(get(r, "inal")), libre: text(get(r, "libre")),
         bl, peso: numero(get(r, "peso")), puerto, etd, eta, buque, terminal,
         cntr, contenedor, agencia: text(get(r, "agencia")), ingreso,
@@ -896,7 +872,7 @@ const ComexParse = (() => {
     return { nuevas, cambios, bajas };
   }
 
-  return { parseWorkbook, diffOps, norm, fecha, etapaDe, etapaHoy, DIAS_HABILES_A_VOLF, sumarHabiles, habilesDesde, usarFeriados, esVerde, colorCelda, idDe };
+  return { parseWorkbook, diffOps, norm, fecha, etapaDe, etapaHoy, fechaVolf, esVerde, colorCelda, idDe };
 })();
 if (typeof module !== "undefined") module.exports = ComexParse;
 
@@ -1048,29 +1024,34 @@ function toast(t) {
 
 /* ---------- datos derivados ---------- */
 function derivar(o) {
-  // La etapa se calcula con la fecha de hoy: así pasa sola a Puerto el día de la ETA y a VOLF 10 días hábiles después.
+  // La etapa se calcula con la fecha de hoy: pasa sola a Puerto el día de la ETA (columna M del libro) y a VOLF el día de
+  // la F. APROX INGRESO A DEPO (columna V).
   const base = o.etapa_base || (o.etapa === "puerto" ? "agua" : o.etapa);
-  const etapa = ComexParse.etapaHoy(base, o.eta);
+  const etapa = ComexParse.etapaHoy(base, o.eta, o.ingreso);
   const etaD = dias(o.eta), etdD = dias(o.etd);
-  let volfF = o.eta ? ComexParse.sumarHabiles(o.eta, ComexParse.DIAS_HABILES_A_VOLF) : null;
-  if (etapa === "volf" && (!volfF || dias(volfF) > 0)) volfF = o.ingreso && dias(o.ingreso) <= 0 ? o.ingreso : null; // ya en VOLF según la planilla
+  const volfF = ComexParse.fechaVolf(o.eta, o.ingreso);
   let prog = null;
   if (etapa === "agua" && o.etd && o.eta) {
     const a = dLocal(o.etd), b = dLocal(o.eta);
     if (b > a) prog = Math.min(1, Math.max(0, (hoy() - a) / (b - a)));
   }
-  const habP = etapa === "puerto" && o.eta ? Math.min(ComexParse.DIAS_HABILES_A_VOLF, ComexParse.habilesDesde(o.eta)) : null;
-  const progP = habP != null ? habP / ComexParse.DIAS_HABILES_A_VOLF : null;
+  let progP = null;
+  if (etapa === "puerto" && o.eta && volfF) {
+    const a = dLocal(o.eta), b = dLocal(volfF);
+    progP = b > a ? Math.min(1, Math.max(0, (hoy() - a) / (b - a))) : 1;
+  }
   const vencida = etapa === "fabrica" && !!o.eta && etaD < 0;
   const _txt = norm([o.op, o.prov, o.rubro, o.origen, pais(o.origen), o.puerto, o.bl, o.contenedor, o.fc, o.buque, o.estado, o.producto].join(" "));
-  return { ...o, etapa, etaD, etdD, prog, progP, habP, volfF, volfD: dias(volfF), vencida, _txt };
+  return { ...o, etapa, etaD, etdD, prog, progP, volfF, volfD: dias(volfF), vencida, _txt };
 }
 const DIAS_VISIBLE_EN_VOLF = 15;  // las que ya llegaron a VOLF dejan de mostrarse a los 15 días
-const visible = (o) => !(o.etapa === "volf" && o.volfF && -o.volfD >= DIAS_VISIBLE_EN_VOLF);
+const visible = (o) => {  // sin fecha de ingreso a depósito, cuenta desde la llegada a puerto
+  const f = o.etapa === "volf" ? o.volfF || o.eta : null;
+  return !(f && -dias(f) >= DIAS_VISIBLE_EN_VOLF);
+};
 const esArgentina = (o) => !o.destino || o.destino === "Argentina";  // la app de COMEX ya publica solo las de Argentina
 function aplicarDatos(d) {
   S.datos = d;
-  ComexParse.usarFeriados(d.feriados);  // los mismos feriados con que la app de COMEX cuenta los días hábiles
   S.ops = (d.ops || []).filter(esArgentina).map(derivar).filter(visible);
   S.pls = new Map(Object.entries(d.pls || {}));
 }
@@ -1173,12 +1154,13 @@ function estadoTexto(o) {
   if (o.etapa === "agua") {
     if (!o.eta) return o.modo === "aereo" ? "En vuelo. ETA a confirmar." : "En agua. ETA a confirmar.";
     const llega = o.modo === "aereo" ? `En vuelo. Llega a Argentina ${rel(o.etaD)}, el ${fLarga(o.eta)}` : `Navegando. Llega a puerto ${rel(o.etaD)}, el ${fLarga(o.eta)}`;
-    return `${llega}, y a VOLF el ${fLarga(o.volfF)}.`;
+    return o.volfF ? `${llega}, y a VOLF el ${fLarga(o.volfF)}.` : `${llega}. La llegada a VOLF está a confirmar.`;
   }
   if (o.etapa === "puerto") {
     const donde = o.modo === "aereo" ? "En el aeropuerto" : "En puerto";
     if (!o.eta) return `${donde}.`;
-    return `${donde} desde ${o.etaD === 0 ? "hoy" : `el ${fLarga(o.eta)}`}. Llega a VOLF ${rel(o.volfD)}, el ${fLarga(o.volfF)}.`;
+    const desde = `${donde} desde ${o.etaD === 0 ? "hoy" : `el ${fLarga(o.eta)}`}.`;
+    return o.volfF ? `${desde} Llega a VOLF ${rel(o.volfD)}, el ${fLarga(o.volfF)}.` : `${desde} La llegada a VOLF está a confirmar.`;
   }
   return o.volfF ? `En VOLF desde ${o.volfD === 0 ? "hoy" : `el ${fLarga(o.volfF)}`}.` : "En VOLF.";
 }
@@ -1200,7 +1182,6 @@ function legs(o) {
   if (!o.eta) l3.push("ETA a confirmar");
   else if (o.vencida) l3.push(`ETA ${nw(fCorta(o.eta))}`);
   else l3.push(`${o.etaD > 0 ? "Llega el" : "Llegó el"} ${nw(fCorta(o.eta))}`);
-  if (o.etapa === "puerto" && o.eta) l3.push(nw(`${o.habP} de ${ComexParse.DIAS_HABILES_A_VOLF} días hábiles`));
   let l4;
   if (o.etapa === "volf") l4 = o.volfF ? `Desde el ${nw(fCorta(o.volfF))}` : "Llegó";
   else l4 = o.volfF && !o.vencida ? `Llega el ${nw(fCorta(o.volfF))}` : "A confirmar";
@@ -1398,7 +1379,7 @@ function facts(o) {
     ["Peso bruto", o.peso ? `${fmt(o.peso)} kg` : ""],
     ["Salida (ETD)", fNum(o.etd)],
     ["Llegada a puerto (ETA)", fNum(o.eta)],
-    [o.etapa === "volf" ? "En VOLF desde" : `Llegada a VOLF (ETA + ${ComexParse.DIAS_HABILES_A_VOLF} días hábiles)`, fNum(o.volfF)],
+    [o.etapa === "volf" ? "En VOLF desde" : "Llegada a VOLF (ingreso a depósito)", o.volfF ? fNum(o.volfF) : o.etapa === "volf" ? "" : "A confirmar"],
     ["Agencia", o.agencia],
     ["Despachante", o.despachante],
     ["Expediente INAL", o.inal],
